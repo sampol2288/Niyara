@@ -370,8 +370,8 @@ export const AdminView = () => {
 
   // Store Settings & Team Permissions State
   const [settingsForm, setSettingsForm] = useState({
-    storeName: "NIYARI Archive",
-    supportEmail: "concierge@niyari.com",
+    storeName: "NIYARA Archive",
+    supportEmail: "concierge@NIYARA.com",
     currency: "USD ($)",
     timezone: "UTC-5 (EST - New York)",
     taxRate: "8.875%",
@@ -384,9 +384,9 @@ export const AdminView = () => {
   });
 
   const [teamMembers, setTeamMembers] = useState([
-    { name: "Julian Vanderveld", email: "julian.v@niyari.com", role: "Super Admin", access: "Full Control", avatar: "JV" },
-    { name: "Elena Rostova", email: "elena.r@niyari.com", role: "Senior Manager", access: "Orders & Inventory", avatar: "ER" },
-    { name: "Marcus Vance", email: "marcus.v@niyari.com", role: "Inventory Lead", access: "Catalog & Restock", avatar: "MV" }
+    { name: "Julian Vanderveld", email: "julian.v@NIYARA.com", role: "Super Admin", access: "Full Control", avatar: "JV" },
+    { name: "Elena Rostova", email: "elena.r@NIYARA.com", role: "Senior Manager", access: "Orders & Inventory", avatar: "ER" },
+    { name: "Marcus Vance", email: "marcus.v@NIYARA.com", role: "Inventory Lead", access: "Catalog & Restock", avatar: "MV" }
   ]);
   const [isInviteTeamModalOpen, setIsInviteTeamModalOpen] = useState(false);
   const [newTeamMember, setNewTeamMember] = useState({ name: "", email: "", role: "Senior Manager" });
@@ -600,7 +600,7 @@ export const AdminView = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 10px #10b981" }} />
             <span style={{ fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 700, color: "var(--accent-camel)" }}>
-              NIYARI OPERATIONAL TERMINAL v3.4
+              NIYARA OPERATIONAL TERMINAL v3.4
             </span>
           </div>
           <span style={{ color: "var(--border-light)" }}>|</span>
@@ -1998,7 +1998,7 @@ export const AdminView = () => {
               </div>
               <div>
                 <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Email Address</label>
-                <input type="email" required placeholder="claire.v@niyari.com" value={newTeamMember.email} onChange={(e) => setNewTeamMember({ ...newTeamMember, email: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }} />
+                <input type="email" required placeholder="claire.v@NIYARA.com" value={newTeamMember.email} onChange={(e) => setNewTeamMember({ ...newTeamMember, email: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }} />
               </div>
               <div>
                 <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Admin Role</label>

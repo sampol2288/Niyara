@@ -247,25 +247,25 @@ export const AppProvider = ({ children }) => {
   // Registered Admin Accounts for Email/Password Authentication
   const [adminAccounts, setAdminAccounts] = useState([
     {
-      email: "admin@niyari.com",
+      email: "admin@NIYARA.com",
       password: "admin123",
       name: "Julian Vanderveld",
       role: "Super Admin"
     },
     {
-      email: "julian.v@niyari.com",
+      email: "julian.v@NIYARA.com",
       password: "admin123",
       name: "Julian Vanderveld",
       role: "Super Admin"
     },
     {
-      email: "elena.r@niyari.com",
+      email: "elena.r@NIYARA.com",
       password: "manager123",
       name: "Elena Rostova",
       role: "Senior Manager"
     },
     {
-      email: "marcus.v@niyari.com",
+      email: "marcus.v@NIYARA.com",
       password: "inventory123",
       name: "Marcus Vance",
       role: "Inventory Lead"
@@ -275,7 +275,7 @@ export const AppProvider = ({ children }) => {
   const [adminSession, setAdminSession] = useState({
     role: "Super Admin",
     user: "Julian Vanderveld",
-    email: "admin@niyari.com",
+    email: "admin@NIYARA.com",
     ip: "192.168.1.104 (TLS 1.3)",
     authenticatedAt: null
   });
@@ -289,7 +289,7 @@ export const AppProvider = ({ children }) => {
       action: "ADMIN_EMAIL_AUTHENTICATED",
       severity: "INFO",
       ip: "192.168.1.104",
-      details: "Session unlocked via Email & Encrypted Password (admin@niyari.com)"
+      details: "Session unlocked via Email & Encrypted Password (admin@NIYARA.com)"
     },
     {
       id: "LOG-1000",
@@ -398,7 +398,7 @@ export const AppProvider = ({ children }) => {
       setAdminSession({
         role: selectedRole,
         user: selectedRole === "Super Admin" ? "Julian Vanderveld" : selectedRole === "Senior Manager" ? "Elena Rostova" : "Marcus Vance",
-        email: selectedRole === "Super Admin" ? "admin@niyari.com" : selectedRole === "Senior Manager" ? "elena.r@niyari.com" : "marcus.v@niyari.com",
+        email: selectedRole === "Super Admin" ? "admin@NIYARA.com" : selectedRole === "Senior Manager" ? "elena.r@NIYARA.com" : "marcus.v@NIYARA.com",
         ip: "192.168.1.104 (TLS 1.3)",
         authenticatedAt: new Date().toLocaleTimeString()
       });

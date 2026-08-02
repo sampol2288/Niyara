@@ -54,7 +54,7 @@ export const AuthModal = () => {
 
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <span style={{ fontFamily: "var(--font-serif)", fontSize: "1.75rem", letterSpacing: "0.2em", display: "block", marginBottom: "0.25rem" }}>
-            NIYARI
+            NIYARA
           </span>
           <span style={{ fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--accent-camel)" }}>
             ARCHIVE ACCESS

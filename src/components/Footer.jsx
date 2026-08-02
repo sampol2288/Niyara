@@ -11,7 +11,7 @@ export const Footer = () => {
     e.preventDefault();
     if (!email) return;
     setSubscribed(true);
-    showToast("Thank you for subscribing to NIYARI Archive.");
+    showToast("Thank you for subscribing to NIYARA Archive.");
     setEmail("");
   };
 
@@ -61,7 +61,7 @@ export const Footer = () => {
           {/* Brand Philosophy */}
           <div>
             <span style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", letterSpacing: "0.2em", color: "var(--text-primary)", display: "block", marginBottom: "1rem" }}>
-              NIYARI
+              NIYARA
             </span>
             <p style={{ fontSize: "0.84rem", color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: "1.5rem" }}>
               Elevated essentials for the modern architectural wardrobe. Grounded in Scandi-minimalism, designed in Stockholm.
@@ -195,7 +195,7 @@ export const Footer = () => {
         {/* Bottom Copyright Bar */}
         <div style={{ borderTop: "1px solid var(--border-light)", paddingTop: "2rem", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "1rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <p>© 2024 NIYARI STUDIO. ALL RIGHTS RESERVED.</p>
+            <p>© 2024 NIYARA STUDIO. ALL RIGHTS RESERVED.</p>
             {/* Discreet Secret Admin Lock Portal */}
             <button
               onClick={() => {

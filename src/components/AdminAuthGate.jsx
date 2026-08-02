@@ -8,7 +8,7 @@ export const AdminAuthGate = () => {
   const [authMode, setAuthMode] = useState("email"); // 'email' | 'pin' | '2fa'
   
   // Email Form State
-  const [emailInput, setEmailInput] = useState("admin@niyari.com");
+  const [emailInput, setEmailInput] = useState("admin@NIYARA.com");
   const [passwordInput, setPasswordInput] = useState("admin123");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -84,7 +84,7 @@ export const AdminAuthGate = () => {
   };
 
   const handleFillDemoCredentials = () => {
-    setEmailInput("admin@niyari.com");
+    setEmailInput("admin@NIYARA.com");
     setPasswordInput("admin123");
     setErrorMessage("");
   };
@@ -141,7 +141,7 @@ export const AdminAuthGate = () => {
           }}
         >
           <ArrowLeft size={16} />
-          <span>Return to NIYARI Storefront</span>
+          <span>Return to NIYARA Storefront</span>
         </button>
 
         <button
@@ -321,7 +321,7 @@ export const AdminAuthGate = () => {
                     type="email"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="admin@niyari.com"
+                    placeholder="admin@NIYARA.com"
                     disabled={remainingLockout > 0}
                     style={{
                       width: "100%",
@@ -396,7 +396,7 @@ export const AdminAuthGate = () => {
                   }}
                 >
                   <Sparkles size={12} />
-                  <span>Auto-fill Admin (admin@niyari.com)</span>
+                  <span>Auto-fill Admin (admin@NIYARA.com)</span>
                 </button>
               </div>
             </div>
@@ -599,7 +599,7 @@ export const AdminAuthGate = () => {
             Demo Admin Credentials:
           </span>
           <div style={{ fontSize: "0.72rem", color: "#c5a072", fontFamily: "monospace", textAlign: "right" }}>
-            <span><strong>admin@niyari.com</strong> / <strong>admin123</strong></span>
+            <span><strong>admin@NIYARA.com</strong> / <strong>admin123</strong></span>
           </div>
         </div>
       </div>

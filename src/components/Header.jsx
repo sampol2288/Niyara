@@ -89,7 +89,7 @@ export const Header = () => {
                 lineHeight: 1
               }}
             >
-              NIYARI
+              NIYARA
             </span>
             <span
               style={{
