@@ -112,19 +112,205 @@ export const AppProvider = ({ children }) => {
     }
   ]);
 
+  // --- AUTHENTICATION & USER MANAGEMENT ---
+  const DEFAULT_USERS = [
+    {
+      name: "Julian Vanderveld",
+      email: "julian.v@aether.com",
+      password: "password123",
+      isVerified: true,
+      phone: "+1 (555) 000-0000",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop"
+    },
+    {
+      name: "Elena Rostova",
+      email: "elena.r@niyara.com",
+      password: "password123",
+      isVerified: true,
+      phone: "+1 (555) 987-6543",
+      avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=300&auto=format&fit=crop"
+    }
+  ];
+
+  const getInitialUser = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = localStorage.getItem("niyara_active_user");
+      if (!stored || stored === "null") return null;
+      return JSON.parse(stored);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const getRegisteredUsers = () => {
+    if (typeof window === "undefined") return DEFAULT_USERS;
+    try {
+      const stored = localStorage.getItem("niyara_registered_users");
+      return stored ? JSON.parse(stored) : DEFAULT_USERS;
+    } catch (e) {
+      return DEFAULT_USERS;
+    }
+  };
+
+  const [registeredUsers, setRegisteredUsers] = useState(getRegisteredUsers);
+  const [user, setUserInternal] = useState(getInitialUser);
+  const [activeOtpSession, setActiveOtpSession] = useState(null); // { email, code: '882194', purpose: 'signup'|'reset', payload: {} }
+
+  const setUser = (newUser) => {
+    setUserInternal(newUser);
+    if (typeof window !== "undefined") {
+      if (newUser) {
+        localStorage.setItem("niyara_active_user", JSON.stringify(newUser));
+      } else {
+        localStorage.setItem("niyara_active_user", "null");
+      }
+    }
+  };
+
+  const updateRegisteredUsers = (newUsersList) => {
+    setRegisteredUsers(newUsersList);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("niyara_registered_users", JSON.stringify(newUsersList));
+    }
+  };
+
+  const loginUser = (email, password) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const found = registeredUsers.find(
+      (u) => u.email.toLowerCase() === cleanEmail && u.password === password
+    );
+
+    if (found) {
+      setUser(found);
+      showToast(`Welcome back, ${found.name.split(" ")[0]}!`);
+      return { success: true, user: found };
+    } else {
+      const emailExists = registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail);
+      if (emailExists) {
+        return { success: false, error: "Incorrect password. Please try again." };
+      }
+      return { success: false, error: "No account found with this email address." };
+    }
+  };
+
+  const startSignupOtp = (name, email, password) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const exists = registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail);
+    if (exists) {
+      return { success: false, error: "An account with this email address already exists." };
+    }
+
+    const generatedCode = "882194";
+    const otpSession = {
+      email: cleanEmail,
+      code: generatedCode,
+      purpose: "signup",
+      payload: {
+        name,
+        email: cleanEmail,
+        password,
+        isVerified: true,
+        phone: "+1 (555) 000-0000",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop"
+      }
+    };
+    setActiveOtpSession(otpSession);
+    showToast(`Verification code sent to ${cleanEmail}`);
+    return { success: true, otpCode: generatedCode };
+  };
+
+  const startResetOtp = (email) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const found = registeredUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (!found) {
+      return { success: false, error: "No registered account found with this email." };
+    }
+
+    const generatedCode = "882194";
+    const otpSession = {
+      email: cleanEmail,
+      code: generatedCode,
+      purpose: "reset",
+      payload: { email: cleanEmail }
+    };
+    setActiveOtpSession(otpSession);
+    showToast(`Password reset code sent to ${cleanEmail}`);
+    return { success: true, otpCode: generatedCode };
+  };
+
+  const verifyOtpCode = (enteredCode) => {
+    if (!activeOtpSession) {
+      return { success: false, error: "No active verification session found." };
+    }
+
+    if (enteredCode !== activeOtpSession.code && enteredCode !== "123456") {
+      return { success: false, error: "Invalid verification code. Use demo code 882194 or 123456." };
+    }
+
+    if (activeOtpSession.purpose === "signup") {
+      const newUser = activeOtpSession.payload;
+      const updatedList = [...registeredUsers, newUser];
+      updateRegisteredUsers(updatedList);
+      setUser(newUser);
+      setActiveOtpSession(null);
+      showToast("Account verified & created successfully!");
+      return { success: true, user: newUser, nextStep: "complete" };
+    }
+
+    if (activeOtpSession.purpose === "reset") {
+      return { success: true, nextStep: "new_password" };
+    }
+
+    return { success: true };
+  };
+
+  const completePasswordReset = (newPassword) => {
+    if (!activeOtpSession || activeOtpSession.purpose !== "reset") {
+      return { success: false, error: "Session expired. Please request a new reset code." };
+    }
+
+    const email = activeOtpSession.email;
+    const updatedList = registeredUsers.map((u) => {
+      if (u.email.toLowerCase() === email.toLowerCase()) {
+        return { ...u, password: newPassword };
+      }
+      return u;
+    });
+
+    updateRegisteredUsers(updatedList);
+    const updatedUser = updatedList.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (updatedUser) setUser(updatedUser);
+    setActiveOtpSession(null);
+    showToast("Password updated successfully! You are now logged in.");
+    return { success: true };
+  };
+
+  const logoutUser = () => {
+    setUser(null);
+    showToast("Signed out of NIYARA.");
+  };
+
+  const updateUserProfile = (updatedFields) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...updatedFields };
+    setUser(updatedUser);
+
+    const updatedList = registeredUsers.map((u) => {
+      if (u.email.toLowerCase() === user.email.toLowerCase()) {
+        return { ...u, ...updatedFields };
+      }
+      return u;
+    });
+    updateRegisteredUsers(updatedList);
+    showToast("Profile settings saved successfully.");
+  };
+
   const [wishlist, setWishlist] = useState(["technical-archetype-trench", "atmosphere-sneaker", "sculptural-wool-trouser"]);
   const [currency, setCurrency] = useState("USD"); // USD ($) or EUR (€)
 
-  const [user, setUser] = useState({
-    name: "Julian Vanderveld",
-    email: "julian.v@aether.com",
-    isVerified: true,
-    phone: "+1 (555) 000-0000",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop"
-  });
-
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState("login"); // login, signup
+  const [authMode, setAuthMode] = useState("login"); // login, signup, otp, reset_email, reset_new_password
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [orders, setOrders] = useState(MOCK_ORDERS);
@@ -479,6 +665,15 @@ export const AppProvider = ({ children }) => {
         toggleTheme,
         user,
         setUser,
+        registeredUsers,
+        activeOtpSession,
+        loginUser,
+        startSignupOtp,
+        startResetOtp,
+        verifyOtpCode,
+        completePasswordReset,
+        logoutUser,
+        updateUserProfile,
         isAuthModalOpen,
         setIsAuthModalOpen,
         authMode,

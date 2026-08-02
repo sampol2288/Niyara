@@ -4,24 +4,24 @@ import confetti from "canvas-confetti";
 import { ShieldCheck, Check, ArrowRight, Truck, CreditCard, Lock, Package, ArrowLeft } from "lucide-react";
 
 export const CheckoutView = () => {
-  const { cart, getSubtotal, formatPrice, FREE_SHIPPING_THRESHOLD, placeOrder, setView, showToast } = useApp();
+  const { user, cart, getSubtotal, formatPrice, FREE_SHIPPING_THRESHOLD, placeOrder, setView, showToast } = useApp();
 
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review, 4: Confirmation
 
   // Form States
   const [shippingForm, setShippingForm] = useState({
-    fullName: "Nikolai Volkoff",
+    fullName: user ? user.name : "Julian Vanderveld",
     street: "128 West 26th Street, Apt 4B",
     city: "New York",
     zip: "10001",
     country: "United States",
-    phone: "+1 (555) 000-0000",
+    phone: user ? (user.phone || "+1 (555) 000-0000") : "+1 (555) 000-0000",
     deliveryMethod: "standard" // standard or express
   });
 
   const [paymentForm, setPaymentForm] = useState({
     method: "card", // card or wallet
-    cardholder: "ERIK LARSSON",
+    cardholder: user ? user.name.toUpperCase() : "JULIAN VANDERVELD",
     cardNumber: "4242 •••• •••• 4242",
     expiry: "08/26",
     cvv: "•••",

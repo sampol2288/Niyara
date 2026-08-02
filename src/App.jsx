@@ -15,6 +15,7 @@ import { AccountView } from "./views/AccountView";
 import { ContactView } from "./views/ContactView";
 import { JournalView } from "./views/JournalView";
 import { AdminView } from "./views/AdminView";
+import { AuthView } from "./views/AuthView";
 
 const MainLayout = () => {
   const { view, setView, isAdminAuthenticated } = useApp();
@@ -58,6 +59,11 @@ const MainLayout = () => {
         return <ContactView />;
       case "journal":
         return <JournalView />;
+      case "auth":
+      case "login":
+        return <AuthView initialTab="login" />;
+      case "signup":
+        return <AuthView initialTab="signup" />;
       case "admin":
         return <AdminView />;
       default:

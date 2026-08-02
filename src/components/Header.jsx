@@ -252,11 +252,42 @@ export const Header = () => {
               color: view === "account" ? "var(--accent-camel)" : "var(--text-primary)",
               cursor: "pointer",
               display: "flex",
-              alignItems: "center"
+              alignItems: "center",
+              gap: "0.5rem",
+              fontSize: "0.75rem",
+              letterSpacing: "0.1em"
             }}
-            title="Account Profile"
+            title={user ? `Account (${user.name})` : "Sign In / Register"}
           >
-            <User size={18} />
+            {user ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    style={{
+                      width: "22px",
+                      height: "22px",
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: "1px solid var(--accent-camel)"
+                    }}
+                  />
+                ) : (
+                  <User size={18} />
+                )}
+                <span className="desktop-only" style={{ fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase" }}>
+                  {user.name.split(" ")[0]}
+                </span>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                <User size={18} />
+                <span className="desktop-only" style={{ fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.12em" }}>
+                  LOG IN
+                </span>
+              </div>
+            )}
           </button>
 
           {/* Wishlist Icon */}

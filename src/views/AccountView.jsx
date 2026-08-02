@@ -1,53 +1,115 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { PRODUCTS } from "../data/products";
 import { User, Package, MapPin, CreditCard, Heart, Check, Truck, ShieldCheck, ChevronRight, Lock, LogOut } from "lucide-react";
 
 export const AccountView = ({ defaultTab = "orders" }) => {
-  const { user, setUser, orders, wishlist, toggleWishlist, addToCart, formatPrice, setView, showToast, setIsAuthModalOpen } = useApp();
+  const {
+    user,
+    setUser,
+    logoutUser,
+    updateUserProfile,
+    orders,
+    wishlist,
+    toggleWishlist,
+    addToCart,
+    formatPrice,
+    setView,
+    showToast,
+    setIsAuthModalOpen,
+    setAuthMode
+  } = useApp();
 
   const [activeTab, setActiveTab] = useState(defaultTab); // profile, orders, addresses, payments, wishlist
 
-  // Profile Form States
+  const nameParts = (user?.name || "Member User").split(" ");
   const [profileData, setProfileData] = useState({
-    firstName: "Julian",
-    lastName: "Vanderveld",
+    firstName: nameParts[0] || "Julian",
+    lastName: nameParts.slice(1).join(" ") || "Vanderveld",
     email: user ? user.email : "julian.v@aether.com",
-    phone: "+1 (555) 000-0000",
+    phone: user ? (user.phone || "+1 (555) 000-0000") : "+1 (555) 000-0000",
     twoFactor: true,
     newsletter: true,
     smsUpdates: true
   });
 
+  useEffect(() => {
+    if (user) {
+      const parts = user.name.split(" ");
+      setProfileData((prev) => ({
+        ...prev,
+        firstName: parts[0] || "",
+        lastName: parts.slice(1).join(" ") || "",
+        email: user.email,
+        phone: user.phone || "+1 (555) 000-0000"
+      }));
+    }
+  }, [user]);
+
   const [expandedOrderId, setExpandedOrderId] = useState("#AE-98234");
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
-    setUser({ ...user, name: `${profileData.firstName} ${profileData.lastName}`, email: profileData.email });
-    showToast("Profile settings saved successfully.");
+    updateUserProfile({
+      name: `${profileData.firstName} ${profileData.lastName}`.trim(),
+      email: profileData.email,
+      phone: profileData.phone
+    });
   };
 
   const wishlistProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
+
+  if (!user) {
+    return (
+      <div className="animate-fade-in" style={{ maxWidth: "800px", margin: "0 auto", padding: "6rem 2rem", textAlign: "center" }}>
+        <div style={{ background: "rgba(197, 160, 114, 0.15)", width: "72px", height: "72px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem", color: "var(--accent-camel)" }}>
+          <Lock size={32} />
+        </div>
+        <span style={{ fontSize: "0.75rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--accent-camel)", fontWeight: 600 }}>AUTHENTICATION REQUIRED</span>
+        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "3rem", color: "var(--text-primary)", margin: "0.5rem 0 1rem" }}>
+          Sign In to Access Account.
+        </h1>
+        <p style={{ fontSize: "1rem", color: "var(--text-secondary)", maxWidth: "520px", margin: "0 auto 2.5rem", lineHeight: 1.7 }}>
+          Access your order dispatch history, manage saved architectural wishlists, update address details, and manage 2FA security protocols.
+        </p>
+
+        <div style={{ display: "flex", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
+          <button
+            onClick={() => { setAuthMode("login"); setIsAuthModalOpen(true); }}
+            className="btn-camel"
+            style={{ padding: "1rem 2rem" }}
+          >
+            SIGN IN TO ACCOUNT
+          </button>
+          <button
+            onClick={() => { setAuthMode("signup"); setIsAuthModalOpen(true); }}
+            className="btn-secondary"
+            style={{ padding: "1rem 2rem" }}
+          >
+            CREATE NEW ACCOUNT
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: "1440px", margin: "0 auto", padding: "3rem 2rem 6rem" }}>
       {/* Header */}
       <div style={{ marginBottom: "3rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
-          <span style={{ fontSize: "0.7rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--accent-camel)" }}>AETHER MEMBER</span>
+          <span style={{ fontSize: "0.7rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--accent-camel)", fontWeight: 600 }}>NIYARA ARCHIVE MEMBER</span>
           <h1 style={{ fontSize: "3rem", color: "var(--text-primary)", marginTop: "0.25rem" }}>
-            Welcome back, {profileData.firstName}.
+            Welcome back, {profileData.firstName || user.name.split(" ")[0]}.
           </h1>
           <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-            Manage your identity, track active dispatches, and access saved archival pieces across the Aether ecosystem.
+            Manage your identity, track active dispatches, and access saved archival pieces across the NIYARA ecosystem.
           </p>
         </div>
 
         <button
           onClick={() => {
-            setUser(null);
-            setIsAuthModalOpen(true);
-            showToast("Logged out of account.");
+            logoutUser();
           }}
           className="btn-secondary"
           style={{ fontSize: "0.7rem", padding: "0.6rem 1rem" }}

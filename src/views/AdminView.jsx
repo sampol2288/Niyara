@@ -84,10 +84,6 @@ export const AdminView = () => {
   const [isChangePinModalOpen, setIsChangePinModalOpen] = useState(false);
   const [pinChangeForm, setPinChangeForm] = useState({ currentPin: "", newPin: "", confirmPin: "" });
 
-  if (!isAdminAuthenticated) {
-    return <AdminAuthGate />;
-  }
-
   // --- STATE FOR OPERATIONAL MODULES ---
 
   // Inventory State
@@ -390,6 +386,10 @@ export const AdminView = () => {
   ]);
   const [isInviteTeamModalOpen, setIsInviteTeamModalOpen] = useState(false);
   const [newTeamMember, setNewTeamMember] = useState({ name: "", email: "", role: "Senior Manager" });
+
+  if (!isAdminAuthenticated) {
+    return <AdminAuthGate />;
+  }
 
   // --- FILTERED DATA LOGIC ---
 
@@ -890,19 +890,19 @@ export const AdminView = () => {
                 
                 {/* Visual Revenue Trajectory */}
                 <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-light)", borderRadius: "8px", padding: "1.5rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
                     <div>
                       <h3 style={{ fontSize: "1rem", fontWeight: 600, margin: 0 }}>Revenue & Trajectory Visual</h3>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Monthly revenue growth in USD</span>
                     </div>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <button style={{ padding: "0.25rem 0.75rem", fontSize: "0.7rem", background: "var(--accent-camel)", color: "#fff", border: "none", borderRadius: "4px", fontWeight: 600 }}>Monthly</button>
-                      <button style={{ padding: "0.25rem 0.75rem", fontSize: "0.7rem", background: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-light)", borderRadius: "4px" }}>Weekly</button>
+                      <button style={{ padding: "0.35rem 0.85rem", fontSize: "0.7rem", background: "var(--accent-camel)", color: "#fff", border: "none", borderRadius: "4px", fontWeight: 600, cursor: "pointer" }}>Monthly</button>
+                      <button style={{ padding: "0.35rem 0.85rem", fontSize: "0.7rem", background: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-light)", borderRadius: "4px", cursor: "pointer" }}>Weekly</button>
                     </div>
                   </div>
 
                   {/* Bar Visual Representation */}
-                  <div style={{ height: "200px", display: "flex", alignItems: "flex-end", gap: "1.2rem", paddingBottom: "1.5rem", borderBottom: "1px solid var(--border-light)" }}>
+                  <div style={{ height: "220px", display: "flex", alignItems: "flex-end", gap: "1.2rem", paddingBottom: "1rem", paddingTop: "1.5rem", borderBottom: "1px solid var(--border-light)" }}>
                     {[
                       { month: "Jan", val: 65, revenue: "$65,000" },
                       { month: "Feb", val: 78, revenue: "$78,000" },
@@ -911,22 +911,25 @@ export const AdminView = () => {
                       { month: "May", val: 95, revenue: "$95,000" },
                       { month: "Jun", val: 112, revenue: "$112,000" },
                       { month: "Jul", val: 128, revenue: "$128,430" }
-                    ].map((item, idx) => (
-                      <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-                        <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>{item.revenue}</span>
-                        <div
-                          style={{
-                            width: "100%",
-                            height: `${item.val * 1.3}px`,
-                            background: idx === 6 ? "var(--accent-camel)" : "var(--border-light)",
-                            borderRadius: "4px 4px 0 0",
-                            transition: "all 0.3s"
-                          }}
-                          title={`${item.month}: ${item.revenue}`}
-                        />
-                        <span style={{ fontSize: "0.75rem", color: "var(--text-primary)", fontWeight: idx === 6 ? 700 : 400 }}>{item.month}</span>
-                      </div>
-                    ))}
+                    ].map((item, idx) => {
+                      const barHeight = Math.round((item.val / 130) * 115);
+                      return (
+                        <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}>
+                          <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: idx === 6 ? 600 : 400, whiteSpace: "nowrap" }}>{item.revenue}</span>
+                          <div
+                            style={{
+                              width: "100%",
+                              height: `${barHeight}px`,
+                              background: idx === 6 ? "var(--accent-camel)" : "var(--border-light)",
+                              borderRadius: "4px 4px 0 0",
+                              transition: "all 0.3s ease"
+                            }}
+                            title={`${item.month}: ${item.revenue}`}
+                          />
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-primary)", fontWeight: idx === 6 ? 700 : 400 }}>{item.month}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
