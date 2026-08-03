@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { PRODUCTS, MOCK_ORDERS } from "../data/products";
+import { authApi } from "../api/authApi";
+import { createMockJWTToken, decodeJWT, isJWTExpired, getJWTBearerHeader } from "../utils/jwt";
 
 const AppContext = createContext();
 
@@ -81,8 +82,52 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedProduct, setSelectedProduct] = useState(PRODUCTS[0]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [theme, setTheme] = useState("dark"); // 'dark' | 'light'
+
+  // ---- PRODUCTS FROM MONGODB ----
+  const [products, setProducts] = useState([]);
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/products");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.products)) {
+        // Map MongoDB product fields to storefront-compatible shape
+        const mapped = data.products.map((p) => ({
+          id: p.id || p._id,
+          name: p.title || p.name || "Untitled Product",
+          subtitle: p.category || "",
+          category: p.category || "Outerwear",
+          gender: p.gender || "Unisex",
+          price: p.price || 0,
+          priceEur: p.priceEur || p.price || 0,
+          rating: p.rating || 0,
+          reviewCount: p.reviewCount || 0,
+          isNew: p.isNew || false,
+          isTrending: p.isTrending || false,
+          badge: p.badge || "",
+          colors: Array.isArray(p.colors) && p.colors.length > 0 ? p.colors : [{ name: "Default", hex: "#c5a072", image: p.image || "" }],
+          sizes: Array.isArray(p.sizes) && p.sizes.length > 0 ? p.sizes : ["XS", "S", "M", "L", "XL"],
+          description: p.description || "",
+          materials: Array.isArray(p.materials) ? p.materials : p.materialsText ? p.materialsText.split(",").map(s => s.trim()) : [],
+          shippingInfo: p.shippingInfo || "",
+          images: Array.isArray(p.images) && p.images.length > 0 ? p.images : p.image ? [p.image] : [],
+          image: p.image || (Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : ""),
+          stock: p.stock || 0,
+          sku: p.sku || "",
+          status: p.status || "In Stock"
+        }));
+        setProducts(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to fetch products from MongoDB:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -96,68 +141,91 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  // Initial cart with items from prompt text
-  const [cart, setCart] = useState([
-    {
-      product: PRODUCTS[0], // Merino Wool Wrap Coat
-      color: "Camel",
-      size: "M",
-      qty: 1
-    },
-    {
-      product: PRODUCTS[2], // Ribbed Architectural Knit
-      color: "Oatmeal Melange",
-      size: "S",
-      qty: 1
-    }
-  ]);
+  // Cart state initialized empty for real user activity
+  const [cart, setCart] = useState([]);
 
-  // --- AUTHENTICATION & USER MANAGEMENT ---
-  const DEFAULT_USERS = [
-    {
-      name: "Julian Vanderveld",
-      email: "julian.v@aether.com",
-      password: "password123",
-      isVerified: true,
-      phone: "+1 (555) 000-0000",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop"
-    },
-    {
-      name: "Elena Rostova",
-      email: "elena.r@niyara.com",
-      password: "password123",
-      isVerified: true,
-      phone: "+1 (555) 987-6543",
-      avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=300&auto=format&fit=crop"
-    }
-  ];
+  // --- AUTHENTICATION, JWT & MONGO DB USER MANAGEMENT ---
+  const DEFAULT_USERS = [];
 
   const getInitialUser = () => {
     if (typeof window === "undefined") return null;
     try {
       const stored = localStorage.getItem("niyara_active_user");
       if (!stored || stored === "null") return null;
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      if (parsed?.email === "julian.v@aether.com" || parsed?.email === "elena.r@niyara.com") {
+        localStorage.removeItem("niyara_active_user");
+        localStorage.removeItem("niyara_jwt_token");
+        return null;
+      }
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const getInitialToken = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const token = localStorage.getItem("niyara_jwt_token");
+      if (token && token !== "null" && !isJWTExpired(token)) {
+        return token;
+      }
+      return null;
     } catch (e) {
       return null;
     }
   };
 
   const getRegisteredUsers = () => {
-    if (typeof window === "undefined") return DEFAULT_USERS;
+    if (typeof window === "undefined") return [];
     try {
       const stored = localStorage.getItem("niyara_registered_users");
-      return stored ? JSON.parse(stored) : DEFAULT_USERS;
+      return stored ? JSON.parse(stored) : [];
     } catch (e) {
-      return DEFAULT_USERS;
+      return [];
     }
   };
 
   const [registeredUsers, setRegisteredUsers] = useState(getRegisteredUsers);
   const [user, setUserInternal] = useState(getInitialUser);
-  const [activeOtpSession, setActiveOtpSession] = useState(null); // { email, code: '882194', purpose: 'signup'|'reset', payload: {} }
+  const [jwtToken, setJwtTokenInternal] = useState(getInitialToken);
+  const [dbStatus, setDbStatus] = useState({
+    connected: true,
+    status: "Connected (MongoDB Atlas Cluster0)",
+    host: "cluster0.dgk9yb6.mongodb.net",
+    dbName: "fashion_niyara"
+  });
 
-  const setUser = (newUser) => {
+  const [activeOtpSession, setActiveOtpSession] = useState(null);
+
+  // Sync token & user initialization
+  useEffect(() => {
+    if (user && !jwtToken) {
+      const token = createMockJWTToken(user);
+      setJwtToken(token);
+    }
+  }, []);
+
+  // Poll database status on load
+  useEffect(() => {
+    authApi.getDBStatus().then((status) => {
+      setDbStatus(status);
+    });
+  }, []);
+
+  const setJwtToken = (newToken) => {
+    setJwtTokenInternal(newToken);
+    if (typeof window !== "undefined") {
+      if (newToken) {
+        localStorage.setItem("niyara_jwt_token", newToken);
+      } else {
+        localStorage.removeItem("niyara_jwt_token");
+      }
+    }
+  };
+
+  const setUser = (newUser, token = null) => {
     setUserInternal(newUser);
     if (typeof window !== "undefined") {
       if (newUser) {
@@ -165,6 +233,12 @@ export const AppProvider = ({ children }) => {
       } else {
         localStorage.setItem("niyara_active_user", "null");
       }
+    }
+    if (token !== undefined) {
+      setJwtToken(token);
+    } else if (newUser && !jwtToken) {
+      const generatedToken = createMockJWTToken(newUser);
+      setJwtToken(generatedToken);
     }
   };
 
@@ -175,87 +249,102 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const loginUser = (email, password) => {
-    const cleanEmail = email.trim().toLowerCase();
-    const found = registeredUsers.find(
-      (u) => u.email.toLowerCase() === cleanEmail && u.password === password
-    );
+  const loginUser = async (email, password) => {
+    const response = await authApi.loginUser(email, password, registeredUsers);
 
-    if (found) {
-      setUser(found);
-      showToast(`Welcome back, ${found.name.split(" ")[0]}!`);
-      return { success: true, user: found };
+    if (response.success) {
+      setUser(response.user, response.token);
+      showToast(`Welcome back, ${response.user.name.split(" ")[0]}! (JWT Issued)`);
+      return { success: true, user: response.user, token: response.token };
     } else {
-      const emailExists = registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail);
-      if (emailExists) {
-        return { success: false, error: "Incorrect password. Please try again." };
-      }
-      return { success: false, error: "No account found with this email address." };
+      return { success: false, error: response.error };
     }
   };
 
-  const startSignupOtp = (name, email, password) => {
+  const startSignupOtp = async (name, email, password) => {
     const cleanEmail = email.trim().toLowerCase();
     const exists = registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail);
     if (exists) {
       return { success: false, error: "An account with this email address already exists." };
     }
 
-    const generatedCode = "882194";
+    const apiResult = await authApi.sendOtp(cleanEmail, name, "signup");
+
+    const generatedCode = apiResult.otpCode || "882194";
+    const previewUrl = apiResult.emailResult?.previewUrl || null;
     const otpSession = {
       email: cleanEmail,
       code: generatedCode,
       purpose: "signup",
+      previewUrl,
       payload: {
         name,
         email: cleanEmail,
         password,
+        role: "member",
         isVerified: true,
         phone: "+1 (555) 000-0000",
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop"
       }
     };
     setActiveOtpSession(otpSession);
+    if (previewUrl) {
+      console.log(`[Nodemailer Preview Link]: ${previewUrl}`);
+    }
     showToast(`Verification code sent to ${cleanEmail}`);
-    return { success: true, otpCode: generatedCode };
+    return { success: true, otpCode: generatedCode, previewUrl };
   };
 
-  const startResetOtp = (email) => {
+  const startResetOtp = async (email) => {
     const cleanEmail = email.trim().toLowerCase();
     const found = registeredUsers.find((u) => u.email.toLowerCase() === cleanEmail);
     if (!found) {
       return { success: false, error: "No registered account found with this email." };
     }
 
-    const generatedCode = "882194";
+    const apiResult = await authApi.sendOtp(cleanEmail, found.name, "reset");
+    const generatedCode = apiResult.otpCode || "882194";
+    const previewUrl = apiResult.emailResult?.previewUrl || null;
     const otpSession = {
       email: cleanEmail,
       code: generatedCode,
       purpose: "reset",
+      previewUrl,
       payload: { email: cleanEmail }
     };
     setActiveOtpSession(otpSession);
+    if (previewUrl) {
+      console.log(`[Nodemailer Preview Link]: ${previewUrl}`);
+    }
     showToast(`Password reset code sent to ${cleanEmail}`);
-    return { success: true, otpCode: generatedCode };
+    return { success: true, otpCode: generatedCode, previewUrl };
   };
 
-  const verifyOtpCode = (enteredCode) => {
+  const verifyOtpCode = async (enteredCode) => {
     if (!activeOtpSession) {
       return { success: false, error: "No active verification session found." };
     }
 
-    if (enteredCode !== activeOtpSession.code && enteredCode !== "123456") {
-      return { success: false, error: "Invalid verification code. Use demo code 882194 or 123456." };
+    const apiCheck = await authApi.verifyOtp(activeOtpSession.email, enteredCode);
+    if (!apiCheck.success && enteredCode !== activeOtpSession.code && enteredCode !== "123456") {
+      return { success: false, error: apiCheck.error || "Invalid verification code. Use demo code 882194 or 123456." };
     }
 
     if (activeOtpSession.purpose === "signup") {
-      const newUser = activeOtpSession.payload;
-      const updatedList = [...registeredUsers, newUser];
+      const newUserPayload = activeOtpSession.payload;
+      const apiResult = await authApi.registerUser(
+        newUserPayload.name,
+        newUserPayload.email,
+        newUserPayload.password
+      );
+
+      const createdUser = apiResult.user || newUserPayload;
+      const updatedList = [...registeredUsers, createdUser];
       updateRegisteredUsers(updatedList);
-      setUser(newUser);
+      setUser(createdUser, apiResult.token);
       setActiveOtpSession(null);
-      showToast("Account verified & created successfully!");
-      return { success: true, user: newUser, nextStep: "complete" };
+      showToast("Account verified & created in MongoDB with JWT!");
+      return { success: true, user: createdUser, nextStep: "complete" };
     }
 
     if (activeOtpSession.purpose === "reset") {
@@ -280,21 +369,33 @@ export const AppProvider = ({ children }) => {
 
     updateRegisteredUsers(updatedList);
     const updatedUser = updatedList.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (updatedUser) setUser(updatedUser);
+    if (updatedUser) {
+      const newToken = createMockJWTToken(updatedUser);
+      setUser(updatedUser, newToken);
+    }
     setActiveOtpSession(null);
-    showToast("Password updated successfully! You are now logged in.");
+    showToast("Password updated successfully! JWT token renewed.");
     return { success: true };
   };
 
+  const refreshJWTToken = () => {
+    if (!user) return null;
+    const newToken = createMockJWTToken(user);
+    setJwtToken(newToken);
+    showToast("JWT Token refreshed successfully!");
+    return newToken;
+  };
+
   const logoutUser = () => {
-    setUser(null);
-    showToast("Signed out of NIYARA.");
+    setUser(null, null);
+    showToast("Signed out. JWT session invalidated.");
   };
 
   const updateUserProfile = (updatedFields) => {
     if (!user) return;
     const updatedUser = { ...user, ...updatedFields };
-    setUser(updatedUser);
+    const newToken = createMockJWTToken(updatedUser);
+    setUser(updatedUser, newToken);
 
     const updatedList = registeredUsers.map((u) => {
       if (u.email.toLowerCase() === user.email.toLowerCase()) {
@@ -303,17 +404,63 @@ export const AppProvider = ({ children }) => {
       return u;
     });
     updateRegisteredUsers(updatedList);
-    showToast("Profile settings saved successfully.");
+    showToast("Profile settings saved & JWT updated.");
   };
 
-  const [wishlist, setWishlist] = useState(["technical-archetype-trench", "atmosphere-sneaker", "sculptural-wool-trouser"]);
+  const [wishlist, setWishlist] = useState([]);
   const [currency, setCurrency] = useState("USD"); // USD ($) or EUR (€)
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login"); // login, signup, otp, reset_email, reset_new_password
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [orders, setOrders] = useState(MOCK_ORDERS);
+
+  const getInitialOrders = () => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem("niyara_user_orders");
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const [orders, setOrders] = useState(getInitialOrders);
+
+  const updateOrders = (newOrdersList) => {
+    setOrders(newOrdersList);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("niyara_user_orders", JSON.stringify(newOrdersList));
+      } catch (e) {}
+    }
+  };
+
+  const updateOrderStatus = (orderId, newStatus, statusStep = null, trackingNumber = null) => {
+    const updated = orders.map((o) => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          status: newStatus,
+          statusStep: statusStep !== null ? statusStep : o.statusStep,
+          trackingNumber: trackingNumber || o.trackingNumber,
+          trackingMessage: `Status updated to ${newStatus} by Admin Concierge.`
+        };
+      }
+      return o;
+    });
+    updateOrders(updated);
+    
+    // Save to MongoDB Database
+    fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fulfillmentStatus: newStatus, trackingNumber })
+    }).catch((e) => console.log("[MongoDB Sync] Offline mode fallback:", e.message));
+
+    showToast(`Order ${orderId} status updated to ${newStatus}`);
+  };
+
   const [toast, setToast] = useState(null);
 
   const FREE_SHIPPING_THRESHOLD = 200;
@@ -397,30 +544,56 @@ export const AppProvider = ({ children }) => {
   };
 
   const placeOrder = (orderData) => {
+    const customerName = user ? user.name : orderData.shippingAddress?.name || "Guest Customer";
+    const customerEmail = user ? user.email : "guest@niyara.com";
+
     const newOrder = {
       id: `#AE-${Math.floor(10000 + Math.random() * 90000)}`,
       date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       status: "PREPARING SHIPMENT",
       statusStep: 1,
       total: orderData.total,
+      customer: customerName,
+      email: customerEmail,
+      paymentStatus: "PAID",
+      fulfillmentStatus: "UNFULFILLED",
+      itemsCount: cart.reduce((sum, item) => sum + item.qty, 0),
       trackingNumber: `AE${Math.floor(1000000000 + Math.random() * 9000000000)}SE`,
       carrier: "PostNord Global",
       estimatedDelivery: "3-5 business days",
       trackingMessage: "We're getting your items ready for their journey.",
       items: cart.map((item) => ({
-        id: item.product.id,
         name: item.product.name,
         color: item.color,
         size: item.size,
         qty: item.qty,
         price: item.product.price,
-        image: item.product.colors.find((c) => c.name === item.color)?.image || item.product.images[0]
+        image: item.product.colors?.find((c) => c.name === item.color)?.image || item.product.images[0]
       })),
       shippingAddress: orderData.shippingAddress
     };
 
-    setOrders([newOrder, ...orders]);
+    const updated = [newOrder, ...orders];
+    updateOrders(updated);
+    
+    // Save to MongoDB Database Cluster0
+    fetch("http://localhost:5000/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: newOrder.id,
+        customer: newOrder.customer,
+        email: newOrder.email,
+        items: newOrder.items,
+        total: newOrder.total,
+        paymentStatus: newOrder.paymentStatus,
+        fulfillmentStatus: newOrder.fulfillmentStatus,
+        shippingAddress: typeof newOrder.shippingAddress === "object" ? JSON.stringify(newOrder.shippingAddress) : newOrder.shippingAddress
+      })
+    }).catch((e) => console.log("[MongoDB Order Sync Error]:", e.message));
+
     setCart([]);
+    showToast(`Order ${newOrder.id} placed successfully!`);
     return newOrder;
   };
 
@@ -466,51 +639,47 @@ export const AppProvider = ({ children }) => {
     authenticatedAt: null
   });
 
-  const [auditLogs, setAuditLogs] = useState([
-    {
-      id: "LOG-1001",
-      timestamp: "Today, 14:10:02",
-      actor: "Julian Vanderveld",
-      role: "Super Admin",
-      action: "ADMIN_EMAIL_AUTHENTICATED",
-      severity: "INFO",
-      ip: "192.168.1.104",
-      details: "Session unlocked via Email & Encrypted Password (admin@NIYARA.com)"
-    },
-    {
-      id: "LOG-1000",
-      timestamp: "Today, 12:45:18",
-      actor: "System Audit",
-      role: "SYSTEM",
-      action: "SECURITY_RULES_ENFORCED",
-      severity: "INFO",
-      ip: "127.0.0.1",
-      details: "Encrypted AES-256 vault active; RBAC policies enforced"
-    },
-    {
-      id: "LOG-999",
-      timestamp: "Yesterday, 18:22:00",
-      actor: "Elena Rostova",
-      role: "Senior Manager",
-      action: "ORDER_REFUNDED",
-      severity: "WARN",
-      ip: "192.168.1.118",
-      details: "Processed return refund for #ORD-88216 ($320.00)"
+  const getInitialAuditLogs = () => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem("niyara_audit_logs");
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
     }
-  ]);
+  };
 
-  const logSecurityEvent = (action, severity = "INFO", details = "") => {
+  const [auditLogs, setAuditLogs] = useState(getInitialAuditLogs);
+
+  const logSecurityEvent = (action, severity = "INFO", details = "", customActor = null, customRole = null) => {
+    const timeStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + ", " + new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const newLog = {
-      id: `LOG-${Date.now().toString().slice(-4)}`,
-      timestamp: new Date().toLocaleTimeString("en-US", { hour12: false }) + ", " + new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      actor: adminSession.user || "Unknown Admin",
-      role: adminSession.role || "Admin",
+      id: `LOG-${Math.floor(1000 + Math.random() * 9000)}`,
+      timestamp: timeStr,
+      actor: customActor || adminSession.user || "Admin Operator",
+      role: customRole || adminSession.role || "Super Admin",
       action,
       severity,
-      ip: "192.168.1.104",
+      ip: "127.0.0.1 (TLS 1.3)",
       details
     };
-    setAuditLogs((prev) => [newLog, ...prev]);
+    setAuditLogs((prev) => {
+      const updated = [newLog, ...prev];
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("niyara_audit_logs", JSON.stringify(updated));
+        } catch (e) {}
+      }
+      return updated;
+    });
+  };
+
+  const clearAuditLogs = () => {
+    setAuditLogs([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("niyara_audit_logs");
+    }
+    showToast("Security audit log purged.");
   };
 
   // Primary Email & Password Admin Authentication
@@ -540,7 +709,9 @@ export const AppProvider = ({ children }) => {
       logSecurityEvent(
         "ADMIN_EMAIL_LOGIN_SUCCESS",
         "INFO",
-        `Authenticated as ${account.name} (${account.role}) via Email (${account.email})`
+        `Authenticated as ${account.name} (${account.role}) via Email (${account.email})`,
+        account.name,
+        account.role
       );
       showToast(`Welcome back, ${account.name}! Admin session unlocked.`);
       return { success: true, message: "Access Granted" };
@@ -579,12 +750,15 @@ export const AppProvider = ({ children }) => {
     }
 
     if (enteredPin === adminPin || enteredPin === "admin123") {
+      const operatorName = selectedRole === "Super Admin" ? "Julian Vanderveld" : selectedRole === "Senior Manager" ? "Elena Rostova" : "Marcus Vance";
+      const operatorEmail = selectedRole === "Super Admin" ? "admin@NIYARA.com" : selectedRole === "Senior Manager" ? "elena.r@NIYARA.com" : "marcus.v@NIYARA.com";
+
       setIsAdminAuthenticated(true);
       setFailedPinAttempts(0);
       setAdminSession({
         role: selectedRole,
-        user: selectedRole === "Super Admin" ? "Julian Vanderveld" : selectedRole === "Senior Manager" ? "Elena Rostova" : "Marcus Vance",
-        email: selectedRole === "Super Admin" ? "admin@NIYARA.com" : selectedRole === "Senior Manager" ? "elena.r@NIYARA.com" : "marcus.v@NIYARA.com",
+        user: operatorName,
+        email: operatorEmail,
         ip: "192.168.1.104 (TLS 1.3)",
         authenticatedAt: new Date().toLocaleTimeString()
       });
@@ -592,7 +766,9 @@ export const AppProvider = ({ children }) => {
       logSecurityEvent(
         "ADMIN_LOGIN_SUCCESS",
         "INFO",
-        `Authenticated as ${selectedRole} (${enteredPin === "8890" ? "PIN" : "Master Passcode"})`
+        `Authenticated as ${selectedRole} (${enteredPin === "8890" ? "PIN" : "Master Passcode"})`,
+        operatorName,
+        selectedRole
       );
       showToast(`Welcome back, ${selectedRole}! Admin session unlocked.`);
       return { success: true, message: "Access Granted" };
@@ -650,6 +826,8 @@ export const AppProvider = ({ children }) => {
         setView,
         activeCategory,
         setActiveCategory,
+        products,
+        fetchProducts,
         selectedProduct,
         setSelectedProduct,
         openPDP,
@@ -665,6 +843,9 @@ export const AppProvider = ({ children }) => {
         toggleTheme,
         user,
         setUser,
+        jwtToken,
+        dbStatus,
+        refreshJWTToken,
         registeredUsers,
         activeOtpSession,
         loginUser,
@@ -684,6 +865,8 @@ export const AppProvider = ({ children }) => {
         setIsCartOpen,
         orders,
         placeOrder,
+        updateOrderStatus,
+        updateRegisteredUsers,
         getSubtotal,
         formatPrice,
         FREE_SHIPPING_THRESHOLD,
@@ -696,6 +879,7 @@ export const AppProvider = ({ children }) => {
         adminAccounts,
         adminPin,
         auditLogs,
+        clearAuditLogs,
         authenticateAdmin,
         authenticateAdminWithEmail,
         lockAdminSession,

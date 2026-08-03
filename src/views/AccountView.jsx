@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { PRODUCTS } from "../data/products";
 import { User, Package, MapPin, CreditCard, Heart, Check, Truck, ShieldCheck, ChevronRight, Lock, LogOut } from "lucide-react";
 
 export const AccountView = ({ defaultTab = "orders" }) => {
@@ -17,18 +16,19 @@ export const AccountView = ({ defaultTab = "orders" }) => {
     setView,
     showToast,
     setIsAuthModalOpen,
-    setAuthMode
+    setAuthMode,
+    products
   } = useApp();
 
   const [activeTab, setActiveTab] = useState(defaultTab); // profile, orders, addresses, payments, wishlist
 
-  const nameParts = (user?.name || "Member User").split(" ");
+  const nameParts = (user?.name || "").split(" ");
   const [profileData, setProfileData] = useState({
-    firstName: nameParts[0] || "Julian",
-    lastName: nameParts.slice(1).join(" ") || "Vanderveld",
-    email: user ? user.email : "julian.v@aether.com",
-    phone: user ? (user.phone || "+1 (555) 000-0000") : "+1 (555) 000-0000",
-    twoFactor: true,
+    firstName: nameParts[0] || "",
+    lastName: nameParts.slice(1).join(" ") || "",
+    email: user ? user.email : "",
+    phone: user ? (user.phone || "") : "",
+    twoFactor: false,
     newsletter: true,
     smsUpdates: true
   });
@@ -57,7 +57,7 @@ export const AccountView = ({ defaultTab = "orders" }) => {
     });
   };
 
-  const wishlistProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
+  const wishlistProducts = products.filter((p) => wishlist.includes(p.id));
 
   if (!user) {
     return (
@@ -94,9 +94,9 @@ export const AccountView = ({ defaultTab = "orders" }) => {
   }
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: "1440px", margin: "0 auto", padding: "3rem 2rem 6rem" }}>
+    <div className="animate-fade-in page-container">
       {/* Header */}
-      <div style={{ marginBottom: "3rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+      <div style={{ marginBottom: "3rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <span style={{ fontSize: "0.7rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--accent-camel)", fontWeight: 600 }}>NIYARA ARCHIVE MEMBER</span>
           <h1 style={{ fontSize: "3rem", color: "var(--text-primary)", marginTop: "0.25rem" }}>
@@ -119,117 +119,42 @@ export const AccountView = ({ defaultTab = "orders" }) => {
       </div>
 
       {/* Main Grid: Sidebar Navigation & Content */}
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "3.5rem" }}>
+      <div className="account-dashboard-grid">
         {/* Sidebar Nav Tabs */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <div className="account-sidebar-nav">
           <button
             onClick={() => setActiveTab("orders")}
-            style={{
-              padding: "1rem 1.25rem",
-              background: activeTab === "orders" ? "var(--bg-card)" : "transparent",
-              border: "1px solid",
-              borderColor: activeTab === "orders" ? "var(--accent-camel)" : "transparent",
-              color: activeTab === "orders" ? "var(--accent-camel)" : "var(--text-secondary)",
-              textAlign: "left",
-              fontSize: "0.75rem",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem"
-            }}
+            className={`account-tab-btn ${activeTab === "orders" ? "active" : ""}`}
           >
-            <Package size={16} /> ORDER HISTORY & TRACKING
+            <Package size={16} /> ORDER HISTORY
           </button>
 
           <button
             onClick={() => setActiveTab("profile")}
-            style={{
-              padding: "1rem 1.25rem",
-              background: activeTab === "profile" ? "var(--bg-card)" : "transparent",
-              border: "1px solid",
-              borderColor: activeTab === "profile" ? "var(--accent-camel)" : "transparent",
-              color: activeTab === "profile" ? "var(--accent-camel)" : "var(--text-secondary)",
-              textAlign: "left",
-              fontSize: "0.75rem",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem"
-            }}
+            className={`account-tab-btn ${activeTab === "profile" ? "active" : ""}`}
           >
-            <User size={16} /> PERSONAL PROFILE
+            <User size={16} /> PROFILE
           </button>
 
           <button
             onClick={() => setActiveTab("wishlist")}
-            style={{
-              padding: "1rem 1.25rem",
-              background: activeTab === "wishlist" ? "var(--bg-card)" : "transparent",
-              border: "1px solid",
-              borderColor: activeTab === "wishlist" ? "var(--accent-camel)" : "transparent",
-              color: activeTab === "wishlist" ? "var(--accent-camel)" : "var(--text-secondary)",
-              textAlign: "left",
-              fontSize: "0.75rem",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem"
-            }}
+            className={`account-tab-btn ${activeTab === "wishlist" ? "active" : ""}`}
           >
             <Heart size={16} /> WISHLIST ({wishlist.length})
           </button>
 
           <button
             onClick={() => setActiveTab("addresses")}
-            style={{
-              padding: "1rem 1.25rem",
-              background: activeTab === "addresses" ? "var(--bg-card)" : "transparent",
-              border: "1px solid",
-              borderColor: activeTab === "addresses" ? "var(--accent-camel)" : "transparent",
-              color: activeTab === "addresses" ? "var(--accent-camel)" : "var(--text-secondary)",
-              textAlign: "left",
-              fontSize: "0.75rem",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem"
-            }}
+            className={`account-tab-btn ${activeTab === "addresses" ? "active" : ""}`}
           >
             <MapPin size={16} /> ADDRESSES
           </button>
 
           <button
             onClick={() => setActiveTab("payments")}
-            style={{
-              padding: "1rem 1.25rem",
-              background: activeTab === "payments" ? "var(--bg-card)" : "transparent",
-              border: "1px solid",
-              borderColor: activeTab === "payments" ? "var(--accent-camel)" : "transparent",
-              color: activeTab === "payments" ? "var(--accent-camel)" : "var(--text-secondary)",
-              textAlign: "left",
-              fontSize: "0.75rem",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem"
-            }}
+            className={`account-tab-btn ${activeTab === "payments" ? "active" : ""}`}
           >
-            <CreditCard size={16} /> PAYMENT METHODS
+            <CreditCard size={16} /> PAYMENTS
           </button>
         </div>
 

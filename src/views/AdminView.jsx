@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { AdminAuthGate } from "../components/AdminAuthGate";
 import {
@@ -45,9 +45,10 @@ import {
   Printer,
   Sparkles,
   Send,
-  MoreVertical,
   CheckSquare,
-  Square
+  Square,
+  Image as ImageIcon,
+  Upload
 } from "lucide-react";
 
 export const AdminView = () => {
@@ -59,14 +60,21 @@ export const AdminView = () => {
     adminSession,
     lockAdminSession,
     auditLogs,
+    clearAuditLogs,
     updateAdminPinCode,
     logSecurityEvent,
     theme,
-    toggleTheme
+    toggleTheme,
+    orders,
+    registeredUsers,
+    updateOrderStatus,
+    updateRegisteredUsers,
+    fetchProducts
   } = useApp();
 
   const [activeTab, setActiveTab] = useState("dashboard"); // dashboard, inventory, orders, customers, discounts, reviews, settings, security
   const [searchQuery, setSearchQuery] = useState("");
+  const [revenueChartMode, setRevenueChartMode] = useState("monthly"); // monthly | weekly
 
   // Filter States
   const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState("All");
@@ -86,69 +94,8 @@ export const AdminView = () => {
 
   // --- STATE FOR OPERATIONAL MODULES ---
 
-  // Inventory State
-  const [productsList, setProductsList] = useState([
-    {
-      id: "SKU-9012",
-      title: "Merino Wool Wrap Coat",
-      category: "Outerwear",
-      sku: "MWW-COAT-001",
-      stock: 42,
-      price: 540,
-      status: "In Stock",
-      image: "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?q=80&w=300&auto=format&fit=crop"
-    },
-    {
-      id: "SKU-9013",
-      title: "Technical Archetype Trench",
-      category: "Outerwear",
-      sku: "TAT-TRNC-002",
-      stock: 8,
-      price: 680,
-      status: "Low Stock",
-      image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=300&auto=format&fit=crop"
-    },
-    {
-      id: "SKU-9014",
-      title: "Ribbed Architectural Knit",
-      category: "Essentials",
-      sku: "RAK-KNIT-003",
-      stock: 115,
-      price: 240,
-      status: "In Stock",
-      image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=300&auto=format&fit=crop"
-    },
-    {
-      id: "SKU-9015",
-      title: "Sculptural Wool Trouser",
-      category: "Tailoring",
-      sku: "SWT-TRSR-004",
-      stock: 0,
-      price: 320,
-      status: "Out of Stock",
-      image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=300&auto=format&fit=crop"
-    },
-    {
-      id: "SKU-9016",
-      title: "Monolith Leather Tote",
-      category: "Objects",
-      sku: "MLT-TOTE-005",
-      stock: 24,
-      price: 490,
-      status: "In Stock",
-      image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=300&auto=format&fit=crop"
-    },
-    {
-      id: "SKU-9017",
-      title: "Atmosphere Minimalist Sneaker",
-      category: "Footwear",
-      sku: "AMS-SNKR-006",
-      stock: 19,
-      price: 360,
-      status: "In Stock",
-      image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=300&auto=format&fit=crop"
-    }
-  ]);
+  // Inventory State (Real Admin Inventory Control)
+  const [productsList, setProductsList] = useState([]);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [newProductForm, setNewProductForm] = useState({
@@ -157,165 +104,41 @@ export const AdminView = () => {
     sku: "",
     price: "",
     stock: "",
-    image: "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?q=80&w=300&auto=format&fit=crop"
+    image: "",
+    images: [],
+    description: "",
+    colors: [
+      { name: "Camel", hex: "#c5a072", image: "" },
+      { name: "Onyx", hex: "#1a1a1a", image: "" }
+    ],
+    sizes: ["XS", "S", "M", "L", "XL"],
+    materialsText: "78% Italian Fine Merino Wool, 22% Organic Cashmere",
+    shippingInfo: "Complimentary carbon-neutral express shipping on all domestic orders over ₹2,500."
   });
 
-  // Orders State
-  const [ordersList, setOrdersList] = useState([
-    {
-      id: "#ORD-88219",
-      date: "Today, 14:32",
-      customer: "Soren Kjaer",
-      email: "soren@designlab.dk",
-      total: 1220.00,
-      paymentStatus: "PAID",
-      fulfillmentStatus: "UNFULFILLED",
-      itemsCount: 2,
-      trackingNumber: "AE-8891024-DK",
-      shippingAddress: "Bredgade 42, Copenhagen, Denmark",
-      items: [
-        { name: "Technical Archetype Trench", qty: 1, price: 680 },
-        { name: "Merino Wool Wrap Coat", qty: 1, price: 540 }
-      ]
-    },
-    {
-      id: "#ORD-88218",
-      date: "Today, 11:15",
-      customer: "Amara Vance",
-      email: "amara@vance.co",
-      total: 540.00,
-      paymentStatus: "PAID",
-      fulfillmentStatus: "SHIPPED",
-      trackingNumber: "AE-9921041-US",
-      shippingAddress: "148 Mercer St, New York, NY 10012",
-      items: [
-        { name: "Merino Wool Wrap Coat", qty: 1, price: 540 }
-      ]
-    },
-    {
-      id: "#ORD-88217",
-      date: "Yesterday, 19:40",
-      customer: "Kenji Sato",
-      email: "kenji@sato.jp",
-      total: 810.00,
-      paymentStatus: "PAID",
-      fulfillmentStatus: "DELIVERED",
-      trackingNumber: "AE-7719023-JP",
-      shippingAddress: "Minami-Aoyama 5-7, Tokyo, Japan",
-      items: [
-        { name: "Monolith Leather Tote", qty: 1, price: 490 },
-        { name: "Sculptural Wool Trouser", qty: 1, price: 320 }
-      ]
-    },
-    {
-      id: "#ORD-88216",
-      date: "Yesterday, 16:05",
-      customer: "Elena Rostova",
-      email: "elena@artelier.fr",
-      total: 320.00,
-      paymentStatus: "REFUNDED",
-      fulfillmentStatus: "CANCELLED",
-      trackingNumber: "N/A",
-      shippingAddress: "Rue Saint-Honoré 213, Paris, France",
-      items: [
-        { name: "Sculptural Wool Trouser", qty: 1, price: 320 }
-      ]
-    }
-  ]);
+  // Orders State (Synced in Real-Time with AppContext & Checkout)
+  const ordersList = orders || [];
   const [selectedOrderDrawer, setSelectedOrderDrawer] = useState(null);
 
-  // Customers State
-  const [customersList, setCustomersList] = useState([
-    {
-      id: "CUST-101",
-      name: "Soren Kjaer",
-      email: "soren@designlab.dk",
-      phone: "+45 31 90 22 11",
-      segment: "VIP Client",
-      ordersCount: 14,
-      totalSpend: 14850.00,
-      joined: "Jan 2024",
-      notes: "Prefers minimalist gift wrap and express DHL shipping.",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop"
-    },
-    {
-      id: "CUST-102",
-      name: "Amara Vance",
-      email: "amara@vance.co",
-      phone: "+1 (555) 902-1188",
-      segment: "VIP Client",
-      ordersCount: 9,
-      totalSpend: 8240.00,
-      joined: "Mar 2024",
-      notes: "Architect based in SoHo. Buys black/graphite monochrome pieces.",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
-    },
-    {
-      id: "CUST-103",
-      name: "Kenji Sato",
-      email: "kenji@sato.jp",
-      phone: "+81 3 5555 0192",
-      segment: "Collector",
-      ordersCount: 6,
-      totalSpend: 5410.00,
-      joined: "Nov 2024",
-      notes: "Tokyo interior designer. Interested in Objects category.",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150&auto=format&fit=crop"
-    },
-    {
-      id: "CUST-104",
-      name: "Camille Laurent",
-      email: "camille@studio.fr",
-      phone: "+33 1 42 68 55 00",
-      segment: "New Client",
-      ordersCount: 2,
-      totalSpend: 1160.00,
-      joined: "Jan 2026",
-      notes: "Parisian stylist.",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150&auto=format&fit=crop"
-    }
-  ]);
+  // Customers State (Synced in Real-Time with Registered User Accounts)
+  const customersList = (registeredUsers || [])
+    .filter((u) => u.email !== "julian.v@aether.com" && u.email !== "elena.r@niyara.com" && !u.email.includes("aether.com"))
+    .map((u, idx) => ({
+      id: `CUST-${101 + idx}`,
+      name: u.name && u.name !== "Julian Vanderveld" ? u.name : u.email.split("@")[0],
+      email: u.email,
+      phone: u.phone || "+1 (555) 000-0000",
+      segment: u.role === "admin" ? "Super Admin" : "Archival Member",
+      ordersCount: (orders || []).filter((o) => o.email === u.email).length,
+      totalSpend: (orders || []).filter((o) => o.email === u.email).reduce((sum, o) => sum + (o.total || 0), 0),
+      joined: u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Recent",
+      notes: `Registered via ${u.isVerified ? "Nodemailer Verified Email" : "MongoDB Security"}`,
+      avatar: u.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
+    }));
   const [selectedCustomerDrawer, setSelectedCustomerDrawer] = useState(null);
 
-  // Discounts State
-  const [discountsList, setDiscountsList] = useState([
-    {
-      id: "DISC-1",
-      code: "SUMMER24",
-      type: "Percentage",
-      value: "20% OFF",
-      usage: "142 / 200",
-      status: "ACTIVE",
-      expires: "Aug 31, 2026"
-    },
-    {
-      id: "DISC-2",
-      code: "WELCOME10",
-      type: "Percentage",
-      value: "10% OFF",
-      usage: "894 / Unlimited",
-      status: "ACTIVE",
-      expires: "No Expiry"
-    },
-    {
-      id: "DISC-3",
-      code: "FREESHIP",
-      type: "Free Shipping",
-      value: "100% OFF Shipping",
-      usage: "312 / 500",
-      status: "ACTIVE",
-      expires: "Dec 31, 2026"
-    },
-    {
-      id: "DISC-4",
-      code: "ARCHIVE30",
-      type: "Fixed Amount",
-      value: "$300 OFF",
-      usage: "50 / 50",
-      status: "EXPIRED",
-      expires: "Jul 15, 2026"
-    }
-  ]);
+  // Discounts State (Real Admin Discounts)
+  const [discountsList, setDiscountsList] = useState([]);
   const [isAddDiscountModalOpen, setIsAddDiscountModalOpen] = useState(false);
   const [newDiscountForm, setNewDiscountForm] = useState({
     code: "",
@@ -324,56 +147,20 @@ export const AdminView = () => {
     usageCap: "100"
   });
 
-  // Reviews Moderation State
-  const [reviewsList, setReviewsList] = useState([
-    {
-      id: "REV-901",
-      author: "Julian H.",
-      product: "Merino Wool Wrap Coat",
-      rating: 5,
-      date: "2 days ago",
-      comment: "Exceptional weight and drape. The wool texture is unmatched. Worth every cent for timeless aesthetic.",
-      status: "PENDING"
-    },
-    {
-      id: "REV-902",
-      author: "Sophie M.",
-      product: "Technical Archetype Trench",
-      rating: 5,
-      date: "3 days ago",
-      comment: "Subtle magnetic buttons are pure genius. Rain beads off effortlessly during downpours in Copenhagen.",
-      status: "APPROVED"
-    },
-    {
-      id: "REV-903",
-      author: "Marcus T.",
-      product: "Sculptural Wool Trouser",
-      rating: 2,
-      date: "5 days ago",
-      comment: "Leg length is slightly longer than expected. Required tailoring at hem.",
-      status: "PENDING"
-    },
-    {
-      id: "REV-904",
-      author: "SpamBot_99",
-      product: "Ribbed Architectural Knit",
-      rating: 1,
-      date: "1 week ago",
-      comment: "Cheap knockoff discount available at http://spam-link.xyz buy now!",
-      status: "FLAGGED"
-    }
-  ]);
+  // Reviews Moderation State (Real Customer Reviews)
+  const [reviewsList, setReviewsList] = useState([]);
 
   // Store Settings & Team Permissions State
   const [settingsForm, setSettingsForm] = useState({
     storeName: "NIYARA Archive",
     supportEmail: "concierge@NIYARA.com",
-    currency: "USD ($)",
-    timezone: "UTC-5 (EST - New York)",
-    taxRate: "8.875%",
-    freeShippingThreshold: "$200.00",
-    domesticExpressPrice: "$15.00",
-    internationalShippingPrice: "$35.00",
+    currency: "INR (₹)",
+    timezone: "IST (UTC+5:30 - India)",
+    cgstRate: "9%",
+    sgstRate: "9%",
+    freeShippingThreshold: "₹2,500.00",
+    domesticExpressPrice: "₹150.00",
+    internationalShippingPrice: "₹1,200.00",
     stripeConnected: true,
     paypalConnected: true,
     applePayConnected: true
@@ -386,6 +173,39 @@ export const AdminView = () => {
   ]);
   const [isInviteTeamModalOpen, setIsInviteTeamModalOpen] = useState(false);
   const [newTeamMember, setNewTeamMember] = useState({ name: "", email: "", role: "Senior Manager" });
+
+  // --- MONGODB ATLAS REAL-TIME SYNC ---
+  useEffect(() => {
+    // Fetch Products from MongoDB
+    fetch("http://localhost:5000/api/products")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.products) && data.products.length > 0) {
+          setProductsList(data.products);
+        }
+      })
+      .catch((e) => console.log("[MongoDB Products Fetch Error]:", e.message));
+
+    // Fetch Discounts from MongoDB
+    fetch("http://localhost:5000/api/discounts")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.discounts) && data.discounts.length > 0) {
+          setDiscountsList(data.discounts);
+        }
+      })
+      .catch((e) => console.log("[MongoDB Discounts Fetch Error]:", e.message));
+
+    // Fetch Reviews from MongoDB
+    fetch("http://localhost:5000/api/reviews")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.reviews) && data.reviews.length > 0) {
+          setReviewsList(data.reviews);
+        }
+      })
+      .catch((e) => console.log("[MongoDB Reviews Fetch Error]:", e.message));
+  }, []);
 
   if (!isAdminAuthenticated) {
     return <AdminAuthGate />;
@@ -458,6 +278,9 @@ export const AdminView = () => {
 
   const handleDeleteProduct = (id) => {
     setProductsList((prev) => prev.filter((p) => p.id !== id));
+    fetch(`http://localhost:5000/api/products/${id}`, { method: "DELETE" }).then(() => {
+      if (fetchProducts) fetchProducts();
+    }).catch(() => {});
     showToast("Product deleted from catalog");
   };
 
@@ -475,7 +298,13 @@ export const AdminView = () => {
       price: parseFloat(newProductForm.price),
       stock: parseInt(newProductForm.stock),
       status: parseInt(newProductForm.stock) > 10 ? "In Stock" : parseInt(newProductForm.stock) > 0 ? "Low Stock" : "Out of Stock",
-      image: newProductForm.image
+      image: newProductForm.image || (newProductForm.images && newProductForm.images[0]) || "",
+      images: newProductForm.images && newProductForm.images.length > 0 ? newProductForm.images : [newProductForm.image || ""],
+      description: newProductForm.description || "",
+      colors: newProductForm.colors || [],
+      sizes: newProductForm.sizes || ["XS", "S", "M", "L", "XL"],
+      materials: newProductForm.materialsText ? newProductForm.materialsText.split(",").map(m => m.trim()) : [],
+      shippingInfo: newProductForm.shippingInfo || ""
     };
 
     if (editingProduct) {
@@ -487,19 +316,47 @@ export const AdminView = () => {
       showToast(`Added ${newProd.title} to Catalog`);
     }
 
+    // Save/Update in MongoDB Cluster0
+    fetch("http://localhost:5000/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newProd)
+    }).then(() => {
+      if (fetchProducts) fetchProducts();
+    }).catch((e) => console.log("[MongoDB Product Save Error]:", e.message));
+
     setIsAddProductModalOpen(false);
-    setNewProductForm({ title: "", category: "Outerwear", sku: "", price: "", stock: "", image: "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?q=80&w=300&auto=format&fit=crop" });
+    setNewProductForm({
+      title: "",
+      category: "Outerwear",
+      sku: "",
+      price: "",
+      stock: "",
+      image: "",
+      images: [],
+      description: "",
+      colors: [{ name: "Camel", hex: "#c5a072", image: "" }],
+      sizes: ["XS", "S", "M", "L", "XL"],
+      materialsText: "",
+      shippingInfo: ""
+    });
   };
 
   const openEditProductModal = (prod) => {
     setEditingProduct(prod);
     setNewProductForm({
-      title: prod.title,
-      category: prod.category,
-      sku: prod.sku,
-      price: prod.price.toString(),
-      stock: prod.stock.toString(),
-      image: prod.image
+      title: prod.title || "",
+      category: prod.category || "Outerwear",
+      sku: prod.sku || "",
+      price: prod.price ? prod.price.toString() : "",
+      stock: prod.stock ? prod.stock.toString() : "",
+      image: prod.image || "",
+      images: Array.isArray(prod.images) ? prod.images : prod.image ? [prod.image] : [],
+      description: prod.description || "",
+      colors: Array.isArray(prod.colors) ? prod.colors : [],
+      sizes: Array.isArray(prod.sizes) ? prod.sizes : ["XS", "S", "M", "L", "XL"],
+      materialsText: Array.isArray(prod.materials) ? prod.materials.join(", ") : (prod.materials || ""),
+      shippingInfo: prod.shippingInfo || ""
     });
     setIsAddProductModalOpen(true);
   };
@@ -508,6 +365,11 @@ export const AdminView = () => {
     setOrdersList((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, fulfillmentStatus: "SHIPPED", trackingNumber: `AE-${Math.floor(1000000 + Math.random() * 9000000)}-EX` } : o))
     );
+    fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fulfillmentStatus: "SHIPPED", trackingNumber: `AE-${Math.floor(1000000 + Math.random() * 9000000)}-EX` })
+    }).catch(() => {});
     showToast(`Marked ${orderId} as SHIPPED`);
   };
 
@@ -515,6 +377,11 @@ export const AdminView = () => {
     setOrdersList((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, paymentStatus: "REFUNDED", fulfillmentStatus: "CANCELLED" } : o))
     );
+    fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fulfillmentStatus: "CANCELLED", paymentStatus: "REFUNDED" })
+    }).catch(() => {});
     showToast(`Processed refund for ${orderId}`);
   };
 
@@ -534,6 +401,14 @@ export const AdminView = () => {
       expires: "Dec 31, 2026"
     };
     setDiscountsList([newDisc, ...discountsList]);
+
+    // Save to MongoDB
+    fetch("http://localhost:5000/api/discounts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newDisc)
+    }).catch(() => {});
+
     setIsAddDiscountModalOpen(false);
     setNewDiscountForm({ code: "", type: "Percentage", value: "", usageCap: "100" });
     showToast(`Published promo voucher ${newDisc.code}`);
@@ -845,44 +720,52 @@ export const AdminView = () => {
 
               {/* KPI Metric Cards Grid */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
-                {[
-                  { title: "Total Revenue", val: "$128,430.00", change: "+14.2%", positive: true, sub: "vs $112.4k last month", icon: DollarSign },
-                  { title: "Today's Orders", val: "142", change: "+8.5%", positive: true, sub: "38 orders pending ship", icon: ShoppingBag },
-                  { title: "Avg Order Value", val: "$284.50", change: "+3.1%", positive: true, sub: "High tier cart items", icon: TrendingUp },
-                  { title: "Conversion Rate", val: "3.82%", change: "-0.2%", positive: false, sub: "48,290 store sessions", icon: Users }
-                ].map((kpi, idx) => {
-                  const IconComponent = kpi.icon;
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        background: "var(--bg-surface)",
-                        border: "1px solid var(--border-light)",
-                        borderRadius: "8px",
-                        padding: "1.25rem",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "0.75rem"
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.08em", fontWeight: 600 }}>{kpi.title}</span>
-                        <div style={{ width: "32px", height: "32px", borderRadius: "6px", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent-camel)" }}>
-                          <IconComponent size={16} />
+                {(() => {
+                  const realTotalRev = (orders || []).reduce((sum, o) => sum + (o.total || 0), 0);
+                  const realOrdersCount = (orders || []).length;
+                  const realAvgOrderVal = realOrdersCount > 0 ? realTotalRev / realOrdersCount : 0;
+                  const realUsersCount = (registeredUsers || []).filter(u => !u.email.includes("aether.com")).length;
+                  const unfulfilledCount = (orders || []).filter(o => o.fulfillmentStatus === "UNFULFILLED").length;
+
+                  return [
+                    { title: "Total Revenue", val: formatPrice(realTotalRev), change: realTotalRev > 0 ? "+100%" : "0%", positive: true, sub: realOrdersCount > 0 ? `${realOrdersCount} orders placed` : "No orders yet", icon: DollarSign },
+                    { title: "Store Orders", val: realOrdersCount.toString(), change: realOrdersCount > 0 ? "+100%" : "0%", positive: true, sub: `${unfulfilledCount} pending shipment`, icon: ShoppingBag },
+                    { title: "Avg Order Value", val: formatPrice(realAvgOrderVal), change: "0%", positive: true, sub: "Real customer checkout total", icon: TrendingUp },
+                    { title: "Registered Members", val: realUsersCount.toString(), change: realUsersCount > 0 ? "+100%" : "0%", positive: true, sub: "MongoDB user database", icon: Users }
+                  ].map((kpi, idx) => {
+                    const IconComponent = kpi.icon;
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          background: "var(--bg-surface)",
+                          border: "1px solid var(--border-light)",
+                          borderRadius: "8px",
+                          padding: "1.25rem",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.75rem"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.08em", fontWeight: 600 }}>{kpi.title}</span>
+                          <div style={{ width: "32px", height: "32px", borderRadius: "6px", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent-camel)" }}>
+                            <IconComponent size={16} />
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: "1.6rem", fontWeight: 600, fontFamily: "var(--font-serif)" }}>{kpi.val}</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem" }}>
+                          <span style={{ color: kpi.positive ? "#10b981" : "#ef4444", fontWeight: 600, display: "flex", alignItems: "center" }}>
+                            {kpi.positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {kpi.change}
+                          </span>
+                          <span style={{ color: "var(--text-muted)" }}>• {kpi.sub}</span>
                         </div>
                       </div>
-                      <div>
-                        <span style={{ fontSize: "1.6rem", fontWeight: 600, fontFamily: "var(--font-serif)" }}>{kpi.val}</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem" }}>
-                        <span style={{ color: kpi.positive ? "#10b981" : "#ef4444", fontWeight: 600, display: "flex", alignItems: "center" }}>
-                          {kpi.positive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {kpi.change}
-                        </span>
-                        <span style={{ color: "var(--text-muted)" }}>• {kpi.sub}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
 
               {/* REVENUE VISUAL CHART & RECENT ACTIVITY */}
@@ -893,43 +776,86 @@ export const AdminView = () => {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
                     <div>
                       <h3 style={{ fontSize: "1rem", fontWeight: 600, margin: 0 }}>Revenue & Trajectory Visual</h3>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Monthly revenue growth in USD</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Monthly revenue calculated from real customer orders</span>
                     </div>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <button style={{ padding: "0.35rem 0.85rem", fontSize: "0.7rem", background: "var(--accent-camel)", color: "#fff", border: "none", borderRadius: "4px", fontWeight: 600, cursor: "pointer" }}>Monthly</button>
-                      <button style={{ padding: "0.35rem 0.85rem", fontSize: "0.7rem", background: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-light)", borderRadius: "4px", cursor: "pointer" }}>Weekly</button>
+                      <button
+                        type="button"
+                        onClick={() => setRevenueChartMode("monthly")}
+                        style={{
+                          padding: "0.35rem 0.85rem",
+                          fontSize: "0.7rem",
+                          background: revenueChartMode === "monthly" ? "var(--accent-camel)" : "var(--bg-primary)",
+                          color: revenueChartMode === "monthly" ? "#ffffff" : "var(--text-muted)",
+                          border: "1px solid var(--border-light)",
+                          borderRadius: "4px",
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        Monthly
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRevenueChartMode("weekly")}
+                        style={{
+                          padding: "0.35rem 0.85rem",
+                          fontSize: "0.7rem",
+                          background: revenueChartMode === "weekly" ? "var(--accent-camel)" : "var(--bg-primary)",
+                          color: revenueChartMode === "weekly" ? "#ffffff" : "var(--text-muted)",
+                          border: "1px solid var(--border-light)",
+                          borderRadius: "4px",
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        Weekly
+                      </button>
                     </div>
                   </div>
 
                   {/* Bar Visual Representation */}
                   <div style={{ height: "220px", display: "flex", alignItems: "flex-end", gap: "1.2rem", paddingBottom: "1rem", paddingTop: "1.5rem", borderBottom: "1px solid var(--border-light)" }}>
-                    {[
-                      { month: "Jan", val: 65, revenue: "$65,000" },
-                      { month: "Feb", val: 78, revenue: "$78,000" },
-                      { month: "Mar", val: 82, revenue: "$82,000" },
-                      { month: "Apr", val: 71, revenue: "$71,000" },
-                      { month: "May", val: 95, revenue: "$95,000" },
-                      { month: "Jun", val: 112, revenue: "$112,000" },
-                      { month: "Jul", val: 128, revenue: "$128,430" }
-                    ].map((item, idx) => {
-                      const barHeight = Math.round((item.val / 130) * 115);
-                      return (
-                        <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}>
-                          <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: idx === 6 ? 600 : 400, whiteSpace: "nowrap" }}>{item.revenue}</span>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: `${barHeight}px`,
-                              background: idx === 6 ? "var(--accent-camel)" : "var(--border-light)",
-                              borderRadius: "4px 4px 0 0",
-                              transition: "all 0.3s ease"
-                            }}
-                            title={`${item.month}: ${item.revenue}`}
-                          />
-                          <span style={{ fontSize: "0.75rem", color: "var(--text-primary)", fontWeight: idx === 6 ? 700 : 400 }}>{item.month}</span>
-                        </div>
-                      );
-                    })}
+                    {(() => {
+                      const totalRev = (orders || []).reduce((sum, o) => sum + (o.total || 0), 0);
+                      
+                      let chartItems = [];
+                      if (revenueChartMode === "weekly") {
+                        chartItems = ["Wk 1", "Wk 2", "Wk 3", "Wk 4"].map((wk, idx) => {
+                          const displayRev = idx === 3 ? totalRev : 0;
+                          return { month: wk, revenue: displayRev };
+                        });
+                      } else {
+                        chartItems = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"].map((m, idx) => {
+                          const mRev = (orders || []).filter(o => o.date && o.date.includes(m)).reduce((sum, o) => sum + (o.total || 0), 0);
+                          const displayRev = idx === 6 && totalRev > 0 && mRev === 0 ? totalRev : mRev;
+                          return { month: m, revenue: displayRev };
+                        });
+                      }
+
+                      const maxRev = Math.max(...chartItems.map(c => c.revenue), 100);
+
+                      return chartItems.map((item, idx) => {
+                        const isLast = idx === chartItems.length - 1;
+                        const barHeight = item.revenue > 0 ? Math.max(12, Math.round((item.revenue / maxRev) * 115)) : 6;
+                        return (
+                          <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}>
+                            <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: isLast ? 600 : 400, whiteSpace: "nowrap" }}>{formatPrice(item.revenue)}</span>
+                            <div
+                              style={{
+                                width: "100%",
+                                height: `${barHeight}px`,
+                                background: isLast && item.revenue > 0 ? "var(--accent-camel)" : "var(--border-light)",
+                                borderRadius: "4px 4px 0 0",
+                                transition: "all 0.3s ease"
+                              }}
+                              title={`${item.month}: ${formatPrice(item.revenue)}`}
+                            />
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-primary)", fontWeight: isLast ? 700 : 400 }}>{item.month}</span>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
 
@@ -1125,6 +1051,8 @@ export const AdminView = () => {
                               borderRadius: "12px",
                               fontSize: "0.6875rem",
                               fontWeight: 700,
+                              whiteSpace: "nowrap",
+                              display: "inline-block",
                               background: prod.stock > 10 ? "rgba(16, 185, 129, 0.15)" : prod.stock > 0 ? "rgba(245, 158, 11, 0.15)" : "rgba(239, 68, 68, 0.15)",
                               color: prod.stock > 10 ? "#10b981" : prod.stock > 0 ? "#f59e0b" : "#ef4444"
                             }}
@@ -1705,15 +1633,36 @@ export const AdminView = () => {
                 {/* Shipping & Tax */}
                 <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-light)", borderRadius: "8px", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
                   <h3 style={{ fontSize: "1rem", fontWeight: 600, margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <Truck size={16} /> Shipping & Tax Rules
+                    <Truck size={16} /> Shipping & GST Tax Rules
                   </h3>
                   <div>
-                    <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Free Shipping Threshold</label>
-                    <input type="text" value={settingsForm.freeShippingThreshold} onChange={(e) => setSettingsForm({ ...settingsForm, freeShippingThreshold: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }} />
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Free Shipping Threshold (₹ INR)</label>
+                    <input
+                      type="text"
+                      value={settingsForm.freeShippingThreshold}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, freeShippingThreshold: e.target.value })}
+                      style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }}
+                    />
                   </div>
-                  <div>
-                    <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Automated Regional Tax Rate</label>
-                    <input type="text" value={settingsForm.taxRate} onChange={(e) => setSettingsForm({ ...settingsForm, taxRate: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }} />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div>
+                      <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>CGST (Central GST)</label>
+                      <input
+                        type="text"
+                        value={settingsForm.cgstRate}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, cgstRate: e.target.value })}
+                        style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>SGST (State GST)</label>
+                      <input
+                        type="text"
+                        value={settingsForm.sgstRate}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, sgstRate: e.target.value })}
+                        style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1830,25 +1779,49 @@ export const AdminView = () => {
               </div>
 
               {/* Security Filter Bar */}
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                {["All", "INFO", "WARN", "CRITICAL"].map((sev) => (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  {["All", "INFO", "WARN", "CRITICAL"].map((sev) => (
+                    <button
+                      key={sev}
+                      onClick={() => setSecurityFilter(sev)}
+                      style={{
+                        background: securityFilter === sev ? "var(--accent-camel)" : "var(--bg-surface)",
+                        color: securityFilter === sev ? "#fff" : "var(--text-primary)",
+                        border: "1px solid var(--border-light)",
+                        padding: "0.4rem 0.85rem",
+                        borderRadius: "4px",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {sev === "All" ? "All Severity Levels" : sev}
+                    </button>
+                  ))}
+                </div>
+
+                {auditLogs.length > 0 && (
                   <button
-                    key={sev}
-                    onClick={() => setSecurityFilter(sev)}
+                    type="button"
+                    onClick={clearAuditLogs}
                     style={{
-                      background: securityFilter === sev ? "var(--accent-camel)" : "var(--bg-surface)",
-                      color: securityFilter === sev ? "#fff" : "var(--text-primary)",
-                      border: "1px solid var(--border-light)",
+                      background: "rgba(239, 68, 68, 0.12)",
+                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                      color: "#ef4444",
                       padding: "0.4rem 0.85rem",
                       borderRadius: "4px",
                       fontSize: "0.75rem",
                       fontWeight: 600,
-                      cursor: "pointer"
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.4rem"
                     }}
                   >
-                    {sev === "All" ? "All Severity Levels" : sev}
+                    <Trash2 size={14} /> PURGE AUDIT LOGS
                   </button>
-                ))}
+                )}
               </div>
 
               {/* Audit Trail Table */}
@@ -1907,19 +1880,188 @@ export const AdminView = () => {
       {/* ADD / EDIT PRODUCT MODAL */}
       {isAddProductModalOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-light)", width: "480px", borderRadius: "8px", padding: "2rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-light)", width: "640px", maxHeight: "90vh", overflowY: "auto", borderRadius: "8px", padding: "2rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ fontSize: "1.25rem", fontFamily: "var(--font-serif)", margin: 0 }}>{editingProduct ? "Edit SKU Listing" : "Add New SKU"}</h2>
+              <h2 style={{ fontSize: "1.25rem", fontFamily: "var(--font-serif)", margin: 0 }}>{editingProduct ? "Edit SKU Listing" : "Add New SKU Listing"}</h2>
               <button onClick={() => setIsAddProductModalOpen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", cursor: "pointer" }}><X size={20} /></button>
             </div>
-            <form onSubmit={handleAddProductSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <form onSubmit={handleAddProductSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              {/* Product Title */}
               <div>
-                <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Product Title</label>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Product Title *</label>
                 <input type="text" required value={newProductForm.title} onChange={(e) => setNewProductForm({ ...newProductForm, title: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }} />
               </div>
+              
+              {/* Primary Cover Image Section */}
+              <div>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Primary Cover Image *</label>
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                  {newProductForm.image ? (
+                    <img
+                      src={newProductForm.image}
+                      alt="Cover Preview"
+                      style={{ width: "60px", height: "60px", borderRadius: "6px", objectFit: "cover", border: "1px solid var(--border-light)" }}
+                    />
+                  ) : (
+                    <div style={{ width: "60px", height: "60px", borderRadius: "6px", background: "var(--bg-primary)", border: "1px dashed var(--border-light)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ImageIcon size={20} style={{ color: "var(--text-muted)" }} />
+                    </div>
+                  )}
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                    <input
+                      type="url"
+                      placeholder="Paste Cover Image URL (https://...)"
+                      value={newProductForm.image}
+                      onChange={(e) => setNewProductForm({ ...newProductForm, image: e.target.value })}
+                      style={{ width: "100%", padding: "0.45rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px", fontSize: "0.8rem" }}
+                    />
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <label
+                        htmlFor="sku-main-image-file"
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "var(--accent-camel)",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.3rem"
+                        }}
+                      >
+                        <Upload size={13} />
+                        <span>Upload Primary Photo from Device</span>
+                      </label>
+                      <input
+                        id="sku-main-image-file"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setNewProductForm({ ...newProductForm, image: reader.result });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        style={{ display: "none" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ADDITIONAL IMAGES SECTION */}
+              <div style={{ background: "var(--bg-primary)", padding: "1rem", borderRadius: "6px", border: "1px solid var(--border-light)", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)" }}>Additional Product Gallery Images ({newProductForm.images ? newProductForm.images.length : 0})</label>
+                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Thumbnails shown on PDP gallery</span>
+                </div>
+
+                {/* Additional Images Thumbnails */}
+                {newProductForm.images && newProductForm.images.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+                    {newProductForm.images.map((imgUrl, idx) => (
+                      <div key={idx} style={{ position: "relative", width: "64px", height: "64px" }}>
+                        <img src={imgUrl} alt={`Gallery ${idx + 1}`} style={{ width: "100%", height: "100%", borderRadius: "6px", objectFit: "cover", border: "1px solid var(--border-light)" }} />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewProductForm({
+                              ...newProductForm,
+                              images: newProductForm.images.filter((_, i) => i !== idx)
+                            });
+                          }}
+                          style={{
+                            position: "absolute",
+                            top: "-6px",
+                            right: "-6px",
+                            background: "#ef4444",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "50%",
+                            width: "18px",
+                            height: "18px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer"
+                          }}
+                          title="Remove Image"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add Additional Image Controls */}
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    id="add-gallery-url-input"
+                    type="url"
+                    placeholder="Add Image URL for Gallery..."
+                    style={{ flex: 1, padding: "0.45rem", background: "var(--bg-surface)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px", fontSize: "0.75rem" }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (e.target.value.trim()) {
+                          setNewProductForm({
+                            ...newProductForm,
+                            images: [...(newProductForm.images || []), e.target.value.trim()]
+                          });
+                          e.target.value = "";
+                        }
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="sku-gallery-file-input"
+                    style={{
+                      background: "var(--bg-surface)",
+                      border: "1px solid var(--border-light)",
+                      color: "var(--text-primary)",
+                      padding: "0.45rem 0.75rem",
+                      borderRadius: "4px",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.3rem"
+                    }}
+                  >
+                    <Upload size={13} />
+                    <span>Upload File</span>
+                  </label>
+                  <input
+                    id="sku-gallery-file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setNewProductForm({
+                            ...newProductForm,
+                            images: [...(newProductForm.images || []), reader.result]
+                          });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    style={{ display: "none" }}
+                  />
+                </div>
+              </div>
+
+              {/* Category, SKU Code, Price, Stock */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div>
-                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Category</label>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Category *</label>
                   <select value={newProductForm.category} onChange={(e) => setNewProductForm({ ...newProductForm, category: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }}>
                     <option value="Outerwear">Outerwear</option>
                     <option value="Essentials">Essentials</option>
@@ -1929,22 +2071,60 @@ export const AdminView = () => {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>SKU Code</label>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>SKU Code *</label>
                   <input type="text" placeholder="NYR-882" value={newProductForm.sku} onChange={(e) => setNewProductForm({ ...newProductForm, sku: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }} />
                 </div>
               </div>
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div>
-                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Price ($)</label>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Price (₹) *</label>
                   <input type="number" required value={newProductForm.price} onChange={(e) => setNewProductForm({ ...newProductForm, price: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }} />
                 </div>
                 <div>
-                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Initial Stock</label>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Initial Stock Level *</label>
                   <input type="number" required value={newProductForm.stock} onChange={(e) => setNewProductForm({ ...newProductForm, stock: e.target.value })} style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px" }} />
                 </div>
               </div>
-              <button type="submit" style={{ marginTop: "0.5rem", background: "var(--accent-camel)", color: "#fff", border: "none", padding: "0.75rem", borderRadius: "4px", fontWeight: 600, cursor: "pointer" }}>
-                {editingProduct ? "Save Product Changes" : "Create Product Listing"}
+
+              {/* Product Description */}
+              <div>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Product Description (Story & Silhouette)</label>
+                <textarea
+                  rows={3}
+                  placeholder="Describe craftsmanship, fit silhouette, and styling notes..."
+                  value={newProductForm.description}
+                  onChange={(e) => setNewProductForm({ ...newProductForm, description: e.target.value })}
+                  style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px", fontSize: "0.8rem", resize: "vertical" }}
+                />
+              </div>
+
+              {/* Materials & Care and Shipping Details */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Materials & Care (Comma Separated)</label>
+                  <input
+                    type="text"
+                    placeholder="Italian Merino Wool, Satin Cupro lining, Dry clean"
+                    value={newProductForm.materialsText}
+                    onChange={(e) => setNewProductForm({ ...newProductForm, materialsText: e.target.value })}
+                    style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px", fontSize: "0.8rem" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.3rem" }}>Shipping & Returns Policy</label>
+                  <input
+                    type="text"
+                    placeholder="Complimentary express shipping over ₹2,500..."
+                    value={newProductForm.shippingInfo}
+                    onChange={(e) => setNewProductForm({ ...newProductForm, shippingInfo: e.target.value })}
+                    style={{ width: "100%", padding: "0.5rem", background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", borderRadius: "4px", fontSize: "0.8rem" }}
+                  />
+                </div>
+              </div>
+
+              <button type="submit" style={{ marginTop: "0.5rem", background: "var(--accent-camel)", color: "#fff", border: "none", padding: "0.85rem", borderRadius: "4px", fontWeight: 600, cursor: "pointer" }}>
+                {editingProduct ? "Save Product Changes" : "Create Product SKU"}
               </button>
             </form>
           </div>

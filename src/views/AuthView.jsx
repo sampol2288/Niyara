@@ -17,9 +17,9 @@ export const AuthView = ({ initialTab = "login" }) => {
   } = useApp();
 
   const [mode, setMode] = useState(authMode || initialTab);
-  const [email, setEmail] = useState("julian.v@aether.com");
-  const [password, setPassword] = useState("password123");
-  const [fullName, setFullName] = useState("Julian Vanderveld");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -82,15 +82,16 @@ export const AuthView = ({ initialTab = "login" }) => {
   };
 
   const autofillDemoOtp = () => {
-    setOtpDigits(["8", "8", "2", "1", "9", "4"]);
+    const codeToFill = activeOtpSession?.code || "882194";
+    setOtpDigits(codeToFill.split(""));
     setErrorMessage("");
-    showToast("Auto-filled code 882194");
+    showToast(`Auto-filled verification code ${codeToFill}`);
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-    const result = loginUser(email, password);
+    const result = await loginUser(email, password);
     if (result.success) {
       setView("account");
     } else {
@@ -98,7 +99,7 @@ export const AuthView = ({ initialTab = "login" }) => {
     }
   };
 
-  const handleSignupSubmit = (e) => {
+  const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
     if (!agreedTerms) {
@@ -110,7 +111,7 @@ export const AuthView = ({ initialTab = "login" }) => {
       return;
     }
 
-    const result = startSignupOtp(fullName, email, password);
+    const result = await startSignupOtp(fullName, email, password);
     if (result.success) {
       setMode("otp");
     } else {
@@ -118,10 +119,10 @@ export const AuthView = ({ initialTab = "login" }) => {
     }
   };
 
-  const handleResetEmailSubmit = (e) => {
+  const handleResetEmailSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-    const result = startResetOtp(email);
+    const result = await startResetOtp(email);
     if (result.success) {
       setMode("otp");
     } else {
@@ -129,7 +130,7 @@ export const AuthView = ({ initialTab = "login" }) => {
     }
   };
 
-  const handleOtpSubmit = (e) => {
+  const handleOtpSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
     const fullCode = otpDigits.join("");
@@ -138,7 +139,7 @@ export const AuthView = ({ initialTab = "login" }) => {
       return;
     }
 
-    const result = verifyOtpCode(fullCode);
+    const result = await verifyOtpCode(fullCode);
     if (result.success) {
       if (result.nextStep === "new_password") {
         setMode("reset_new_password");
@@ -170,22 +171,11 @@ export const AuthView = ({ initialTab = "login" }) => {
     }
   };
 
-  const fillDemoUser = (userType) => {
-    if (userType === "julian") {
-      setEmail("julian.v@aether.com");
-      setPassword("password123");
-      setFullName("Julian Vanderveld");
-    } else {
-      setEmail("elena.r@niyara.com");
-      setPassword("password123");
-      setFullName("Elena Rostova");
-    }
-    setErrorMessage("");
-  };
+
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: "1200px", margin: "0 auto", padding: "4rem 2rem 6rem" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", alignItems: "center" }}>
+    <div className="animate-fade-in page-container" style={{ maxWidth: "1200px" }}>
+      <div className="auth-view-grid">
         {/* Left Hero Brand Banner */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-light)", padding: "3.5rem 3rem", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div>
@@ -295,15 +285,6 @@ export const AuthView = ({ initialTab = "login" }) => {
                 </div>
               </div>
 
-              {/* Demo Fill Buttons */}
-              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-light)", padding: "1rem", borderRadius: "4px" }}>
-                <span style={{ fontSize: "0.6rem", letterSpacing: "0.15em", color: "var(--accent-camel)", textTransform: "uppercase", display: "block", marginBottom: "0.5rem", fontWeight: 600 }}>⚡ 1-CLICK DEMO ACCOUNTS</span>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                  <button type="button" onClick={() => fillDemoUser("julian")} className="btn-secondary" style={{ fontSize: "0.65rem", padding: "0.4rem" }}>Julian (Member)</button>
-                  <button type="button" onClick={() => fillDemoUser("elena")} className="btn-secondary" style={{ fontSize: "0.65rem", padding: "0.4rem" }}>Elena (VIP)</button>
-                </div>
-              </div>
-
               <button type="submit" className="btn-primary" style={{ width: "100%", padding: "1rem", marginTop: "0.5rem" }}>SECURE SIGN IN</button>
             </form>
           )}
@@ -331,11 +312,11 @@ export const AuthView = ({ initialTab = "login" }) => {
           {mode === "otp" && (
             <form onSubmit={handleOtpSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", textAlign: "center" }}>
-                Enter the 6-digit verification code sent to <br />
+                Enter the 6-digit verification code sent to your email <br />
                 <strong style={{ color: "var(--text-primary)" }}>{activeOtpSession?.email || email}</strong>
               </p>
 
-              <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem" }} onPaste={handleOtpPaste}>
+              <div className="otp-inputs-responsive" onPaste={handleOtpPaste}>
                 {otpDigits.map((digit, idx) => (
                   <input
                     key={idx}
@@ -361,10 +342,6 @@ export const AuthView = ({ initialTab = "login" }) => {
                   />
                 ))}
               </div>
-
-              <button type="button" onClick={autofillDemoOtp} style={{ background: "rgba(197, 160, 114, 0.12)", border: "1px dashed var(--accent-camel)", color: "var(--accent-camel)", fontSize: "0.7rem", padding: "0.5rem", borderRadius: "4px", cursor: "pointer", textAlign: "center" }}>
-                ⚡ AUTO-FILL DEMO CODE (882194)
-              </button>
 
               <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }}>VERIFY & CONTINUE</button>
             </form>

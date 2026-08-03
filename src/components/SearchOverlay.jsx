@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { PRODUCTS } from "../data/products";
 import { Search as SearchIcon, X, ArrowRight } from "lucide-react";
 
 export const SearchOverlay = () => {
-  const { isSearchOpen, setIsSearchOpen, openPDP, formatPrice } = useApp();
+  const { isSearchOpen, setIsSearchOpen, openPDP, formatPrice, products } = useApp();
   const [query, setQuery] = useState("");
 
   if (!isSearchOpen) return null;
@@ -14,10 +13,10 @@ export const SearchOverlay = () => {
 
   const filteredProducts = query.trim() === ""
     ? []
-    : PRODUCTS.filter((p) =>
+    : products.filter((p) =>
         p.name.toLowerCase().includes(query.toLowerCase()) ||
         p.category.toLowerCase().includes(query.toLowerCase()) ||
-        p.description.toLowerCase().includes(query.toLowerCase())
+        (p.description && p.description.toLowerCase().includes(query.toLowerCase()))
       );
 
   return (

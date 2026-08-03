@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { PRODUCTS } from "../data/products";
 import { Filter, SlidersHorizontal, Heart, ShoppingBag, X } from "lucide-react";
 
 export const ShopView = () => {
-  const { activeCategory, setActiveCategory, openPDP, addToCart, toggleWishlist, wishlist, formatPrice } = useApp();
+  const { activeCategory, setActiveCategory, openPDP, addToCart, toggleWishlist, wishlist, formatPrice, products } = useApp();
 
   const [selectedSize, setSelectedSize] = useState("All");
   const [selectedColor, setSelectedColor] = useState("All");
@@ -16,7 +15,7 @@ export const ShopView = () => {
   const colors = ["All", "Camel", "Onyx", "Oatmeal", "Graphite", "Chocolate Brown"];
 
   // Filtering Logic
-  let filtered = PRODUCTS.filter((p) => {
+  let filtered = products.filter((p) => {
     if (activeCategory !== "All" && activeCategory !== "Women") {
       if (p.category !== activeCategory) return false;
     }
@@ -44,15 +43,15 @@ export const ShopView = () => {
   };
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: "1440px", margin: "0 auto", padding: "3rem 2rem 6rem" }}>
+    <div className="animate-fade-in page-container">
       {/* Category Header */}
       <div style={{ marginBottom: "3rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
           <span>Home</span> / <span>Shop</span> / <span style={{ color: "var(--text-primary)" }}>{activeCategory}</span>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "1rem" }}>
           <div>
-            <h1 style={{ fontSize: "3rem", color: "var(--text-primary)" }}>
+            <h1 style={{ fontSize: "2.5rem", color: "var(--text-primary)" }}>
               {activeCategory === "All" ? "Archive Collection" : `${activeCategory}'s Collection`}
             </h1>
             <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
@@ -253,7 +252,7 @@ export const ShopView = () => {
           </button>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "2.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1.5rem" }}>
           {filtered.map((product) => {
             const isSaved = wishlist.includes(product.id);
             return (

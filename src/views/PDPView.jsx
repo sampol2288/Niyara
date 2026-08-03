@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { PRODUCTS, MOCK_REVIEWS } from "../data/products";
 import { Heart, ShoppingBag, Star, ChevronDown, ChevronUp, ShieldCheck, RefreshCw, Truck, X, Plus, Minus, Check } from "lucide-react";
 
 export const PDPView = () => {
-  const { selectedProduct, addToCart, toggleWishlist, wishlist, formatPrice, setView, openPDP, showToast } = useApp();
+  const { selectedProduct, addToCart, toggleWishlist, wishlist, formatPrice, setView, openPDP, showToast, products } = useApp();
 
-  const product = selectedProduct || PRODUCTS[0];
+  const product = selectedProduct || products[0] || { id: "", name: "No Product", subtitle: "", category: "", price: 0, colors: [], sizes: [], images: [], description: "", materials: [], shippingInfo: "" };
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name || "Camel");
@@ -37,9 +36,9 @@ export const PDPView = () => {
   const currentImage = product.colors.find((c) => c.name === selectedColor)?.image || product.images[activeImageIndex] || product.images[0];
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: "1440px", margin: "0 auto", padding: "2rem 2rem 6rem" }}>
+    <div className="animate-fade-in page-container">
       {/* Breadcrumbs */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "2rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "2rem", flexWrap: "wrap" }}>
         <span style={{ cursor: "pointer" }} onClick={() => setView("home")}>Home</span> /
         <span style={{ cursor: "pointer" }} onClick={() => setView("shop")}>{product.gender || "Women"}</span> /
         <span style={{ cursor: "pointer" }} onClick={() => setView("shop")}>{product.category}</span> /
@@ -47,7 +46,7 @@ export const PDPView = () => {
       </div>
 
       {/* Main PDP Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "4rem", marginBottom: "6rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "2.5rem", marginBottom: "4rem" }}>
         {/* Left Column: Gallery */}
         <div>
           {/* Main Hero Image */}
@@ -306,7 +305,7 @@ export const PDPView = () => {
 
           {/* Right Reviews List */}
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-            {MOCK_REVIEWS.map((rev) => (
+            {[].map((rev) => (
               <div key={rev.id} style={{ borderBottom: "1px solid var(--border-light)", paddingBottom: "2rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>

@@ -18,9 +18,9 @@ export const AuthModal = () => {
   } = useApp();
 
   // Form Input States
-  const [email, setEmail] = useState("julian.v@aether.com");
-  const [password, setPassword] = useState("password123");
-  const [fullName, setFullName] = useState("Julian Vanderveld");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -95,16 +95,17 @@ export const AuthModal = () => {
   };
 
   const autofillDemoOtp = () => {
-    setOtpDigits(["8", "8", "2", "1", "9", "4"]);
+    const codeToFill = activeOtpSession?.code || "882194";
+    setOtpDigits(codeToFill.split(""));
     setErrorMessage("");
-    showToast("Auto-filled verification code 882194");
+    showToast(`Auto-filled verification code ${codeToFill}`);
   };
 
   // Form Submission Handlers
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-    const result = loginUser(email, password);
+    const result = await loginUser(email, password);
     if (result.success) {
       setIsAuthModalOpen(false);
     } else {
@@ -112,7 +113,7 @@ export const AuthModal = () => {
     }
   };
 
-  const handleSignupSubmit = (e) => {
+  const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
     if (!agreedTerms) {
@@ -124,7 +125,7 @@ export const AuthModal = () => {
       return;
     }
 
-    const result = startSignupOtp(fullName, email, password);
+    const result = await startSignupOtp(fullName, email, password);
     if (result.success) {
       setAuthMode("otp");
     } else {
@@ -132,10 +133,10 @@ export const AuthModal = () => {
     }
   };
 
-  const handleResetEmailSubmit = (e) => {
+  const handleResetEmailSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-    const result = startResetOtp(email);
+    const result = await startResetOtp(email);
     if (result.success) {
       setAuthMode("otp");
     } else {
@@ -143,7 +144,7 @@ export const AuthModal = () => {
     }
   };
 
-  const handleOtpSubmit = (e) => {
+  const handleOtpSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
     const fullCode = otpDigits.join("");
@@ -152,7 +153,7 @@ export const AuthModal = () => {
       return;
     }
 
-    const result = verifyOtpCode(fullCode);
+    const result = await verifyOtpCode(fullCode);
     if (result.success) {
       if (result.nextStep === "new_password") {
         setAuthMode("reset_new_password");
@@ -182,19 +183,6 @@ export const AuthModal = () => {
     } else {
       setErrorMessage(result.error);
     }
-  };
-
-  const fillDemoUser = (userType) => {
-    if (userType === "julian") {
-      setEmail("julian.v@aether.com");
-      setPassword("password123");
-      setFullName("Julian Vanderveld");
-    } else {
-      setEmail("elena.r@niyara.com");
-      setPassword("password123");
-      setFullName("Elena Rostova");
-    }
-    setErrorMessage("");
   };
 
   return (
@@ -351,31 +339,6 @@ export const AuthModal = () => {
               </div>
             </div>
 
-            {/* Quick Demo Credentials Assistant */}
-            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-light)", padding: "0.875rem", borderRadius: "4px" }}>
-              <span style={{ fontSize: "0.6rem", letterSpacing: "0.15em", color: "var(--accent-camel)", textTransform: "uppercase", display: "block", marginBottom: "0.5rem", fontWeight: 600 }}>
-                ⚡ 1-CLICK DEMO ACCOUNTS
-              </span>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                <button
-                  type="button"
-                  onClick={() => fillDemoUser("julian")}
-                  className="btn-secondary"
-                  style={{ fontSize: "0.65rem", padding: "0.4rem", textTransform: "none" }}
-                >
-                  Julian (Member)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillDemoUser("elena")}
-                  className="btn-secondary"
-                  style={{ fontSize: "0.65rem", padding: "0.4rem", textTransform: "none" }}
-                >
-                  Elena (VIP)
-                </button>
-              </div>
-            </div>
-
             <button type="submit" className="btn-primary" style={{ marginTop: "0.5rem", width: "100%", padding: "1rem" }}>
               SECURE LOGIN
             </button>
@@ -528,13 +491,13 @@ export const AuthModal = () => {
                 <KeyRound size={24} />
               </div>
               <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                We've dispatched a 6-digit security code to <br />
+                We've dispatched a 6-digit security code to your email <br />
                 <strong style={{ color: "var(--text-primary)" }}>{activeOtpSession?.email || email}</strong>
               </p>
             </div>
 
             {/* 6 OTP Input Boxes */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem" }} onPaste={handleOtpPaste}>
+            <div className="otp-inputs-responsive" onPaste={handleOtpPaste}>
               {otpDigits.map((digit, idx) => (
                 <input
                   key={idx}
@@ -560,26 +523,6 @@ export const AuthModal = () => {
                   }}
                 />
               ))}
-            </div>
-
-            {/* Quick Autofill Helper for Demo Testing */}
-            <div style={{ textAlign: "center" }}>
-              <button
-                type="button"
-                onClick={autofillDemoOtp}
-                style={{
-                  background: "rgba(197, 160, 114, 0.12)",
-                  border: "1px dashed var(--accent-camel)",
-                  color: "var(--accent-camel)",
-                  fontSize: "0.7rem",
-                  letterSpacing: "0.1em",
-                  padding: "0.5rem 1rem",
-                  borderRadius: "4px",
-                  cursor: "pointer"
-                }}
-              >
-                ⚡ AUTO-FILL DEMO CODE (882194)
-              </button>
             </div>
 
             <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }}>

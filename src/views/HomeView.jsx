@@ -1,12 +1,11 @@
 import React from "react";
 import { useApp } from "../context/AppContext";
-import { PRODUCTS } from "../data/products";
 import { ArrowRight, Heart, ShoppingBag, Sparkles } from "lucide-react";
 
 export const HomeView = () => {
-  const { setView, setActiveCategory, openPDP, addToCart, toggleWishlist, wishlist, formatPrice } = useApp();
+  const { setView, setActiveCategory, openPDP, addToCart, toggleWishlist, wishlist, formatPrice, products } = useApp();
 
-  const featuredProducts = PRODUCTS.slice(0, 4);
+  const featuredProducts = products.slice(0, 4);
 
   return (
     <div className="animate-fade-in">

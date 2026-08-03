@@ -10,21 +10,21 @@ export const CheckoutView = () => {
 
   // Form States
   const [shippingForm, setShippingForm] = useState({
-    fullName: user ? user.name : "Julian Vanderveld",
-    street: "128 West 26th Street, Apt 4B",
-    city: "New York",
-    zip: "10001",
+    fullName: user ? user.name : "",
+    street: "",
+    city: "",
+    zip: "",
     country: "United States",
-    phone: user ? (user.phone || "+1 (555) 000-0000") : "+1 (555) 000-0000",
+    phone: user ? (user.phone || "") : "",
     deliveryMethod: "standard" // standard or express
   });
 
   const [paymentForm, setPaymentForm] = useState({
     method: "card", // card or wallet
-    cardholder: user ? user.name.toUpperCase() : "JULIAN VANDERVELD",
-    cardNumber: "4242 •••• •••• 4242",
-    expiry: "08/26",
-    cvv: "•••",
+    cardholder: user ? user.name.toUpperCase() : "",
+    cardNumber: "",
+    expiry: "",
+    cvv: "",
     sameAsShipping: true
   });
 

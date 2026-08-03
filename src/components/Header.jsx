@@ -49,6 +49,7 @@ export const Header = () => {
 
       {/* Main Navigation Bar */}
       <div
+        className="header-nav-container"
         style={{
           maxWidth: "1440px",
           margin: "0 auto",
@@ -80,6 +81,7 @@ export const Header = () => {
             style={{ cursor: "pointer", display: "flex", flexDirection: "column" }}
           >
             <span
+              className="brand-logo-text"
               style={{
                 fontFamily: "var(--font-serif)",
                 fontSize: "1.75rem",
@@ -112,7 +114,7 @@ export const Header = () => {
             alignItems: "center",
             gap: "2rem"
           }}
-          className="desktop-nav"
+          className="desktop-nav desktop-nav-links"
         >
           <button
             onClick={() => handleNavClick("Women")}
