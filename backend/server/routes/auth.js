@@ -2,6 +2,11 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
+import Category from "../models/Category.js";
+import Product from "../models/Product.js";
+import Order from "../models/Order.js";
+import Discount from "../models/Discount.js";
+import Review from "../models/Review.js";
 import { getDBStatus } from "../config/db.js";
 import { sendOTPEmail } from "../services/emailService.js";
 
@@ -58,6 +63,23 @@ router.get("/db-status", (req, res) => {
     database: status,
     timestamp: new Date().toISOString()
   });
+});
+
+// POST /api/auth/clear-db (Purges all demo data from MongoDB collections)
+router.post("/clear-db", async (req, res) => {
+  try {
+    await Promise.all([
+      Category.deleteMany({}),
+      Product.deleteMany({}),
+      Order.deleteMany({}),
+      User.deleteMany({}),
+      Discount.deleteMany({}),
+      Review.deleteMany({})
+    ]);
+    return res.json({ success: true, message: "All demo data purged from MongoDB collections" });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // POST /api/auth/send-otp

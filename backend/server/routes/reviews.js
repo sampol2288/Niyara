@@ -3,26 +3,17 @@ import Review from "../models/Review.js";
 
 const router = express.Router();
 
-const DEFAULT_REVIEWS = [
-  {
-    id: "REV-101",
-    author: "Sophie Laurent",
-    product: "Archival Wool Trench Coat",
-    rating: 5,
-    comment: "Exceptional tailoring and silhouette. Impeccable weight and finish.",
-    status: "APPROVED"
-  }
-];
-
+// GET all customer reviews from database
 router.get("/", async (req, res) => {
   try {
-    const reviews = await Review.find().sort({ createdAt: -1 }).maxTimeMS(5000);
+    const reviews = await Review.find().sort({ createdAt: -1 });
     return res.json({ success: true, reviews });
   } catch (error) {
-    return res.json({ success: true, reviews: DEFAULT_REVIEWS, mode: "Standby Fallback" });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// CREATE review by customer/admin
 router.post("/", async (req, res) => {
   try {
     const { author, email, product, rating, comment } = req.body;
@@ -30,22 +21,15 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ success: false, error: "Author, product, and comment are required" });
     }
 
-    const reviewData = {
+    const review = await Review.create({
       id: `REV-${Math.floor(100 + Math.random() * 900)}`,
-      author,
+      author: author.trim(),
       email: email || "",
-      product,
+      product: product.trim(),
       rating: parseInt(rating) || 5,
-      comment,
+      comment: comment.trim(),
       status: "APPROVED"
-    };
-
-    let review;
-    try {
-      review = await Review.create(reviewData);
-    } catch (dbErr) {
-      review = reviewData;
-    }
+    });
 
     return res.json({ success: true, review });
   } catch (error) {
@@ -53,29 +37,23 @@ router.post("/", async (req, res) => {
   }
 });
 
+// UPDATE review status (APPROVED / REJECTED) by admin
 router.patch("/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
-    let review;
-    try {
-      review = await Review.findOneAndUpdate({ id: req.params.id }, { status }, { new: true });
-    } catch (dbErr) {
-      review = { id: req.params.id, status };
-    }
+    const review = await Review.findOneAndUpdate({ id: req.params.id }, { status }, { new: true });
+    if (!review) return res.status(404).json({ success: false, error: "Review not found" });
     return res.json({ success: true, review });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// DELETE review by admin
 router.delete("/:id", async (req, res) => {
   try {
-    try {
-      await Review.findOneAndDelete({ id: req.params.id });
-    } catch (dbErr) {
-      console.warn("DB offline during review deletion");
-    }
-    return res.json({ success: true, message: "Review deleted" });
+    await Review.findOneAndDelete({ id: req.params.id });
+    return res.json({ success: true, message: "Review deleted from database" });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }

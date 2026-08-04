@@ -3,77 +3,17 @@ import Category from "../models/Category.js";
 
 const router = express.Router();
 
-const DEFAULT_CATEGORIES = [
-  {
-    id: "CAT-101",
-    name: "Outerwear",
-    slug: "outerwear",
-    description: "Tailored blazers, luxury wool coats, leather trenches",
-    image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop",
-    isFeatured: true,
-    status: "ACTIVE",
-    itemCount: 12
-  },
-  {
-    id: "CAT-102",
-    name: "Tops",
-    slug: "tops",
-    description: "Silk shirts, structured corsets, cashmere knits",
-    image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=600&auto=format&fit=crop",
-    isFeatured: true,
-    status: "ACTIVE",
-    itemCount: 18
-  },
-  {
-    id: "CAT-103",
-    name: "Bottoms",
-    slug: "bottoms",
-    description: "Wide-leg trousers, pleated skirts, denim jeans",
-    image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=600&auto=format&fit=crop",
-    isFeatured: false,
-    status: "ACTIVE",
-    itemCount: 15
-  },
-  {
-    id: "CAT-104",
-    name: "Footwear",
-    slug: "footwear",
-    description: "Archival boots, leather heels, minimalist loafers",
-    image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=600&auto=format&fit=crop",
-    isFeatured: true,
-    status: "ACTIVE",
-    itemCount: 9
-  },
-  {
-    id: "CAT-105",
-    name: "Accessories",
-    slug: "accessories",
-    description: "Leather handbags, statement belts, luxury eyewear",
-    image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=600&auto=format&fit=crop",
-    isFeatured: false,
-    status: "ACTIVE",
-    itemCount: 22
-  }
-];
-
+// GET all categories created by admin
 router.get("/", async (req, res) => {
   try {
-    let categories = await Category.find().sort({ createdAt: -1 }).maxTimeMS(5000);
-    if (categories.length === 0) {
-      try {
-        await Category.insertMany(DEFAULT_CATEGORIES);
-        categories = await Category.find().sort({ createdAt: -1 });
-      } catch (insertErr) {
-        categories = DEFAULT_CATEGORIES;
-      }
-    }
+    const categories = await Category.find().sort({ createdAt: -1 });
     return res.json({ success: true, categories });
   } catch (error) {
-    console.warn(`[Category DB Fetch Notice]: ${error.message}. Returning default category data.`);
-    return res.json({ success: true, categories: DEFAULT_CATEGORIES, mode: "Standby Fallback" });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// CREATE or UPDATE category by admin
 router.post("/", async (req, res) => {
   try {
     const { id, name, description, image, isFeatured, status } = req.body;
@@ -94,41 +34,30 @@ router.post("/", async (req, res) => {
       status: status || "ACTIVE"
     };
 
-    let category;
-    try {
-      category = await Category.findOneAndUpdate({ id: catId }, categoryData, { upsert: true, new: true });
-    } catch (dbErr) {
-      category = categoryData;
-    }
+    const category = await Category.findOneAndUpdate({ id: catId }, categoryData, { upsert: true, new: true });
     return res.json({ success: true, category });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// UPDATE category status (ACTIVE / INACTIVE) by admin
 router.patch("/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
-    try {
-      const category = await Category.findOneAndUpdate({ id: req.params.id }, { status }, { new: true });
-      if (!category) return res.status(404).json({ success: false, error: "Category not found" });
-      return res.json({ success: true, category });
-    } catch (dbErr) {
-      return res.json({ success: true, message: `Status updated to ${status} (Local Mode)` });
-    }
+    const category = await Category.findOneAndUpdate({ id: req.params.id }, { status }, { new: true });
+    if (!category) return res.status(404).json({ success: false, error: "Category not found" });
+    return res.json({ success: true, category });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// DELETE category by admin
 router.delete("/:id", async (req, res) => {
   try {
-    try {
-      await Category.findOneAndDelete({ id: req.params.id });
-    } catch (dbErr) {
-      console.warn("DB offline during category deletion");
-    }
-    return res.json({ success: true, message: "Category deleted successfully" });
+    await Category.findOneAndDelete({ id: req.params.id });
+    return res.json({ success: true, message: "Category deleted from database" });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }

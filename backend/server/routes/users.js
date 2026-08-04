@@ -3,34 +3,17 @@ import { User } from "../models/User.js";
 
 const router = express.Router();
 
-const DEFAULT_USERS = [
-  {
-    _id: "USR-001",
-    name: "Super Admin",
-    email: "admin@NIYARA.com",
-    role: "admin",
-    phone: "+1 (555) 888-9999",
-    isVerified: true
-  },
-  {
-    _id: "USR-002",
-    name: "Elena Rostova",
-    email: "elena.rostova@vogue.fr",
-    role: "vip",
-    phone: "+33 1 42 68 55 00",
-    isVerified: true
-  }
-];
-
+// GET all users created/registered in database
 router.get("/", async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 }).maxTimeMS(5000);
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
     return res.json({ success: true, users });
   } catch (error) {
-    return res.json({ success: true, users: DEFAULT_USERS, mode: "Standby Fallback" });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// CREATE user account by admin
 router.post("/", async (req, res) => {
   try {
     const { name, email, password, role, phone } = req.body;
@@ -39,37 +22,28 @@ router.post("/", async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const existing = await User.findOne({ email: cleanEmail });
+    if (existing) {
+      return res.status(400).json({ success: false, error: "User with this email already exists" });
+    }
+
     const defaultPassword = password || "Niyara@2026";
-    const userData = {
-      _id: `USR-${Date.now()}`,
+    const user = await User.create({
       name: name.trim(),
       email: cleanEmail,
+      password: defaultPassword,
       role: role || "member",
       phone: phone || "+1 (555) 000-0000",
       isVerified: true
-    };
+    });
 
-    let userObj;
-    try {
-      const user = await User.create({
-        name: name.trim(),
-        email: cleanEmail,
-        password: defaultPassword,
-        role: role || "member",
-        phone: phone || "+1 (555) 000-0000",
-        isVerified: true
-      });
-      userObj = user.toJSON();
-    } catch (dbErr) {
-      userObj = userData;
-    }
-
-    return res.json({ success: true, user: userObj });
+    return res.json({ success: true, user: user.toJSON() });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// UPDATE user role by admin
 router.patch("/:id/role", async (req, res) => {
   try {
     const { role } = req.body;
@@ -77,12 +51,8 @@ router.patch("/:id/role", async (req, res) => {
       return res.status(400).json({ success: false, error: "Role parameter is required" });
     }
 
-    let user;
-    try {
-      user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select("-password");
-    } catch (dbErr) {
-      user = { _id: req.params.id, role };
-    }
+    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select("-password");
+    if (!user) return res.status(404).json({ success: false, error: "User not found" });
 
     return res.json({ success: true, user });
   } catch (error) {
@@ -90,13 +60,10 @@ router.patch("/:id/role", async (req, res) => {
   }
 });
 
+// DELETE user account by admin
 router.delete("/:id", async (req, res) => {
   try {
-    try {
-      await User.findByIdAndDelete(req.params.id);
-    } catch (dbErr) {
-      console.warn("DB offline during user deletion");
-    }
+    await User.findByIdAndDelete(req.params.id);
     return res.json({ success: true, message: "User account deleted successfully" });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });

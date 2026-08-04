@@ -232,7 +232,7 @@ export const AdminProvider = ({ children }) => {
   const [users, setUsers] = useState([]);
   const [discounts, setDiscounts] = useState([]);
   const [reviews, setReviews] = useState([]);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Synchronizers

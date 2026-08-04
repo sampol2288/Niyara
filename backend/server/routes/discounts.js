@@ -3,27 +3,17 @@ import Discount from "../models/Discount.js";
 
 const router = express.Router();
 
-const DEFAULT_DISCOUNTS = [
-  {
-    id: "DISC-901",
-    code: "NIYARA25",
-    type: "Percentage",
-    value: 25,
-    usage: "12 / 100",
-    status: "ACTIVE",
-    expires: "Dec 31, 2026"
-  }
-];
-
+// GET all promo vouchers created by admin
 router.get("/", async (req, res) => {
   try {
-    const discounts = await Discount.find().sort({ createdAt: -1 }).maxTimeMS(5000);
+    const discounts = await Discount.find().sort({ createdAt: -1 });
     return res.json({ success: true, discounts });
   } catch (error) {
-    return res.json({ success: true, discounts: DEFAULT_DISCOUNTS, mode: "Standby Fallback" });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// CREATE promo code by admin
 router.post("/", async (req, res) => {
   try {
     const { code, type, value, usageCap, expires } = req.body;
@@ -31,22 +21,15 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ success: false, error: "Code and value are required" });
     }
 
-    const discountData = {
+    const discount = await Discount.create({
       id: `DISC-${Date.now()}`,
-      code: code.toUpperCase(),
+      code: code.toUpperCase().trim(),
       type: type || "Percentage",
       value: parseFloat(value),
       usage: `0 / ${usageCap || 100}`,
       status: "ACTIVE",
       expires: expires || "Dec 31, 2026"
-    };
-
-    let discount;
-    try {
-      discount = await Discount.create(discountData);
-    } catch (dbErr) {
-      discount = discountData;
-    }
+    });
 
     return res.json({ success: true, discount });
   } catch (error) {
@@ -54,14 +37,11 @@ router.post("/", async (req, res) => {
   }
 });
 
+// DELETE promo code by admin
 router.delete("/:id", async (req, res) => {
   try {
-    try {
-      await Discount.findOneAndDelete({ id: req.params.id });
-    } catch (dbErr) {
-      console.warn("DB offline during discount deletion");
-    }
-    return res.json({ success: true, message: "Discount code deleted" });
+    await Discount.findOneAndDelete({ id: req.params.id });
+    return res.json({ success: true, message: "Discount code deleted from database" });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }

@@ -3,40 +3,17 @@ import Product from "../models/Product.js";
 
 const router = express.Router();
 
-const DEFAULT_PRODUCTS = [
-  {
-    id: "SKU-1001",
-    title: "Archival Wool Trench Coat",
-    category: "Outerwear",
-    sku: "NYR-9081",
-    price: 1850,
-    stock: 14,
-    status: "In Stock",
-    image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop",
-    description: "Heavyweight virgin wool tailored trench coat with horn buttons."
-  },
-  {
-    id: "SKU-1002",
-    title: "Structured Leather Corset Top",
-    category: "Tops",
-    sku: "NYR-9082",
-    price: 920,
-    stock: 5,
-    status: "Low Stock",
-    image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=600&auto=format&fit=crop",
-    description: "Hand-molded calfskin leather corset with silver hardware."
-  }
-];
-
+// GET all products created by admin
 router.get("/", async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 }).maxTimeMS(5000);
+    const products = await Product.find().sort({ createdAt: -1 });
     return res.json({ success: true, products });
   } catch (error) {
-    return res.json({ success: true, products: DEFAULT_PRODUCTS, mode: "Standby Fallback" });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// CREATE or UPDATE product SKU by admin
 router.post("/", async (req, res) => {
   try {
     const { id, title, category, sku, price, stock, status, image, images, colors, sizes, description, materials, shippingInfo } = req.body;
@@ -47,7 +24,7 @@ router.post("/", async (req, res) => {
     const prodId = id || `SKU-${Math.floor(1000 + Math.random() * 9000)}`;
     const productData = {
       id: prodId,
-      title,
+      title: title.trim(),
       category: category || "Outerwear",
       sku: sku || `NYR-${Math.floor(1000 + Math.random() * 9000)}`,
       price: parseFloat(price),
@@ -62,40 +39,29 @@ router.post("/", async (req, res) => {
       shippingInfo: shippingInfo || ""
     };
 
-    let product;
-    try {
-      product = await Product.findOneAndUpdate({ id: prodId }, productData, { upsert: true, new: true });
-    } catch (dbErr) {
-      product = productData;
-    }
+    const product = await Product.findOneAndUpdate({ id: prodId }, productData, { upsert: true, new: true });
     return res.json({ success: true, product });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// UPDATE product by admin
 router.put("/:id", async (req, res) => {
   try {
-    let product;
-    try {
-      product = await Product.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
-    } catch (dbErr) {
-      product = { id: req.params.id, ...req.body };
-    }
+    const product = await Product.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
+    if (!product) return res.status(404).json({ success: false, error: "Product not found" });
     return res.json({ success: true, product });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// DELETE product by admin
 router.delete("/:id", async (req, res) => {
   try {
-    try {
-      await Product.findOneAndDelete({ id: req.params.id });
-    } catch (dbErr) {
-      console.warn("DB offline during product deletion");
-    }
-    return res.json({ success: true, message: "Product deleted from MongoDB" });
+    await Product.findOneAndDelete({ id: req.params.id });
+    return res.json({ success: true, message: "Product SKU deleted from database" });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
