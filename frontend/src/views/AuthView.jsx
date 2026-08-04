@@ -88,10 +88,14 @@ export const AuthView = ({ initialTab = "login" }) => {
     showToast(`Auto-filled verification code ${codeToFill}`);
   };
 
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setIsLoading(true);
     const result = await loginUser(email, password);
+    setIsLoading(false);
     if (result.success) {
       setView("account");
     } else {
@@ -111,7 +115,9 @@ export const AuthView = ({ initialTab = "login" }) => {
       return;
     }
 
+    setIsLoading(true);
     const result = await startSignupOtp(fullName, email, password);
+    setIsLoading(false);
     if (result.success) {
       setMode("otp");
     } else {
@@ -122,7 +128,9 @@ export const AuthView = ({ initialTab = "login" }) => {
   const handleResetEmailSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setIsLoading(true);
     const result = await startResetOtp(email);
+    setIsLoading(false);
     if (result.success) {
       setMode("otp");
     } else {
@@ -304,7 +312,9 @@ export const AuthView = ({ initialTab = "login" }) => {
                 <label style={{ fontSize: "0.65rem", letterSpacing: "0.15em", color: "var(--text-secondary)", display: "block", marginBottom: "0.5rem" }}>PASSWORD</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-minimal" required />
               </div>
-              <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }}>SEND OTP CODE <ArrowRight size={16} /></button>
+              <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }} disabled={isLoading}>
+                {isLoading ? "PROCESSING..." : <>SEND VERIFICATION OTP <ArrowRight size={16} /></>}
+              </button>
             </form>
           )}
 

@@ -101,11 +101,15 @@ export const AuthModal = () => {
     showToast(`Auto-filled verification code ${codeToFill}`);
   };
 
+  const [isLoading, setIsLoading] = useState(false);
+
   // Form Submission Handlers
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setIsLoading(true);
     const result = await loginUser(email, password);
+    setIsLoading(false);
     if (result.success) {
       setIsAuthModalOpen(false);
     } else {
@@ -125,7 +129,10 @@ export const AuthModal = () => {
       return;
     }
 
+    setIsLoading(true);
     const result = await startSignupOtp(fullName, email, password);
+    setIsLoading(false);
+    
     if (result.success) {
       setAuthMode("otp");
     } else {
@@ -136,7 +143,9 @@ export const AuthModal = () => {
   const handleResetEmailSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    setIsLoading(true);
     const result = await startResetOtp(email);
+    setIsLoading(false);
     if (result.success) {
       setAuthMode("otp");
     } else {
@@ -442,8 +451,12 @@ export const AuthModal = () => {
               <span>I agree to NIYARA's Terms of Service and Privacy Policy for archive membership.</span>
             </label>
 
-            <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }}>
-              SEND VERIFICATION OTP <ArrowRight size={16} />
+            <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }} disabled={isLoading}>
+              {isLoading ? (
+                <>PROCESSING... <RefreshCw size={16} className="spin" /></>
+              ) : (
+                <>SEND VERIFICATION OTP <ArrowRight size={16} /></>
+              )}
             </button>
           </form>
         )}
