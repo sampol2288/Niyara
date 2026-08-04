@@ -1,0 +1,21 @@
+{
+  "name": "niyara-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "backend": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.1",
+    "nodemailer": "^9.0.3"
+  }
+}

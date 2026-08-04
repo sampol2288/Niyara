@@ -7,6 +7,8 @@ import productRoutes from "./routes/products.js";
 import orderRoutes from "./routes/orders.js";
 import reviewRoutes from "./routes/reviews.js";
 import discountRoutes from "./routes/discounts.js";
+import userRoutes from "./routes/users.js";
+import categoryRoutes from "./routes/categories.js";
 
 dotenv.config();
 
@@ -24,6 +26,8 @@ app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/discounts", discountRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/categories", categoryRoutes);
 
 // Root Health Endpoint
 app.get("/api/health", (req, res) => {
@@ -36,7 +40,9 @@ app.get("/api/health", (req, res) => {
       "/api/products",
       "/api/orders",
       "/api/reviews",
-      "/api/discounts"
+      "/api/discounts",
+      "/api/users",
+      "/api/categories"
     ],
     timestamp: new Date().toISOString()
   });
