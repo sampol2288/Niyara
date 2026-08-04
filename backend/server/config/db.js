@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const DEFAULT_MONGO_URI = "mongodb+srv://polarasmit2504:Asmit2504@cluster0.mongodb.net/niyara?retryWrites=true&w=majority";
+const DEFAULT_MONGO_URI = "mongodb+srv://polarasmit2504:Asmit2504@cluster0.dgk9yb6.mongodb.net/niyara?retryWrites=true&w=majority";
 
 export const connectDB = async () => {
   const mongoURI = process.env.MONGO_URI || DEFAULT_MONGO_URI;
