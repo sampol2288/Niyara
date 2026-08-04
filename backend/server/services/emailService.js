@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 
-// Ensure .env is loaded regardless of process launch directory
+// Ensure .env is loaded cleanly regardless of cwd
 const envPath = fs.existsSync(path.resolve(process.cwd(), ".env"))
   ? path.resolve(process.cwd(), ".env")
   : fs.existsSync(path.resolve(process.cwd(), "backend/.env"))
@@ -15,37 +15,30 @@ dotenv.config({ path: envPath });
 const DEFAULT_SMTP_USER = "polarasmit2504@gmail.com";
 const DEFAULT_SMTP_PASS = "hrvxobebbngadule";
 
-// Create Nodemailer Transporter
-const createTransporter = () => {
+// Create Nodemailer Transporters
+const createTransporter = (useSSL = false) => {
   const user = process.env.SMTP_USER || DEFAULT_SMTP_USER;
   const rawPass = process.env.SMTP_PASS || DEFAULT_SMTP_PASS;
   const pass = rawPass.replace(/\s+/g, "");
 
-  // Use Nodemailer built-in Gmail service configuration for maximum reliability
-  if (user.endsWith("@gmail.com") || (process.env.SMTP_HOST && process.env.SMTP_HOST.includes("gmail"))) {
+  if (useSSL) {
     return nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user,
-        pass
-      }
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false }
     });
   }
 
-  // Generic custom SMTP host configuration
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = parseInt(process.env.SMTP_PORT || "587", 10);
   return nodemailer.createTransport({
-    host,
-    port,
-    secure: process.env.SMTP_SECURE === "true" || port === 465,
-    auth: { user, pass },
-    tls: { rejectUnauthorized: false }
+    service: "gmail",
+    auth: { user, pass }
   });
 };
 
 /**
- * Sends OTP Email via Nodemailer Gmail Engine
+ * Sends OTP Email via Nodemailer Gmail Engine with Port 465 SSL Fallback
  */
 export const sendOTPEmail = async (toEmail, otpCode, purpose = "Verification", name = "Member") => {
   const userEmail = process.env.SMTP_USER || DEFAULT_SMTP_USER;
@@ -56,8 +49,6 @@ export const sendOTPEmail = async (toEmail, otpCode, purpose = "Verification", n
   console.log(`  OTP Code: ${otpCode}`);
   console.log(`  From Account: ${userEmail}`);
   console.log(`======================================================\n`);
-
-  const transporter = createTransporter();
 
   const mailOptions = {
     from: process.env.EMAIL_FROM || `"NIYARA Concierge" <${userEmail}>`,
@@ -86,7 +77,9 @@ export const sendOTPEmail = async (toEmail, otpCode, purpose = "Verification", n
     `
   };
 
+  // Attempt 1: Standard Gmail Service
   try {
+    const transporter = createTransporter(false);
     const info = await transporter.sendMail(mailOptions);
     console.log(`[Gmail Dispatch Success] Sent to ${toEmail} | Message ID: ${info.messageId}`);
     return {
@@ -94,12 +87,26 @@ export const sendOTPEmail = async (toEmail, otpCode, purpose = "Verification", n
       deliveredVia: "Gmail Nodemailer Engine",
       messageId: info.messageId
     };
-  } catch (error) {
-    console.error(`[Gmail Dispatch Error]: ${error.message}`);
-    return {
-      success: false,
-      error: error.message,
-      otpCode
-    };
+  } catch (error1) {
+    console.warn(`[Gmail Service Attempt Failed]: ${error1.message}. Retrying via Port 465 Direct SSL...`);
+    
+    // Attempt 2: Direct SSL Port 465
+    try {
+      const sslTransporter = createTransporter(true);
+      const info2 = await sslTransporter.sendMail(mailOptions);
+      console.log(`[Gmail Port 465 Dispatch Success] Sent to ${toEmail} | Message ID: ${info2.messageId}`);
+      return {
+        success: true,
+        deliveredVia: "Gmail Port 465 SSL Engine",
+        messageId: info2.messageId
+      };
+    } catch (error2) {
+      console.error(`[Gmail SSL Dispatch Error]: ${error2.message}`);
+      return {
+        success: false,
+        error: error2.message,
+        otpCode
+      };
+    }
   }
 };

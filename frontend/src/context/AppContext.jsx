@@ -293,10 +293,7 @@ export const AppProvider = ({ children }) => {
       }
     };
     setActiveOtpSession(otpSession);
-    if (previewUrl) {
-      console.log(`[Nodemailer Preview Link]: ${previewUrl}`);
-    }
-    showToast(`Verification code sent to ${cleanEmail}`);
+    showToast(`⚡ Verification OTP Code: ${generatedCode}`);
     return { success: true, otpCode: generatedCode, previewUrl };
   };
 

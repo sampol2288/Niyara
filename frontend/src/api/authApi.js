@@ -11,7 +11,7 @@ const getApiBase = () => {
 const API_BASE = getApiBase();
 
 export const authApi = {
-  // Send OTP
+  // Send OTP (supports both sendOTP and sendOtp)
   sendOTP: async (email, name, purpose) => {
     try {
       const res = await fetch(`${API_BASE}/auth/send-otp`, {
@@ -21,7 +21,6 @@ export const authApi = {
       });
       return await res.json();
     } catch (e) {
-      // Offline / network fallback
       const demoOtp = "882194";
       console.log(`[Offline Fallback OTP]: ${demoOtp}`);
       return {
@@ -32,7 +31,11 @@ export const authApi = {
     }
   },
 
-  // Verify OTP
+  sendOtp: async (email, name, purpose) => {
+    return await authApi.sendOTP(email, name, purpose);
+  },
+
+  // Verify OTP (supports both verifyOTP and verifyOtp)
   verifyOTP: async (email, code) => {
     try {
       const cleanCode = String(code).trim();
@@ -49,6 +52,10 @@ export const authApi = {
       }
       return { success: false, error: "Verification error" };
     }
+  },
+
+  verifyOtp: async (email, code) => {
+    return await authApi.verifyOTP(email, code);
   },
 
   // Register
@@ -75,13 +82,14 @@ export const authApi = {
     }
   },
 
-  // Login
-  login: async (credentials) => {
+  // Login (supports both login and loginUser)
+  login: async (credentials, password) => {
+    const payload = typeof credentials === "string" ? { email: credentials, password } : credentials;
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials)
+        body: JSON.stringify(payload)
       });
       return await res.json();
     } catch (e) {
@@ -91,11 +99,15 @@ export const authApi = {
         user: {
           id: "USER-001",
           name: "Member User",
-          email: credentials.email,
+          email: payload.email,
           role: "member",
           isVerified: true
         }
       };
     }
+  },
+
+  loginUser: async (email, password) => {
+    return await authApi.login({ email, password });
   }
 };
