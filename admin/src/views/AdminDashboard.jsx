@@ -422,6 +422,84 @@ export const AdminDashboard = () => {
     return matchesSearch && matchesStatus;
   });
 
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          width: "100vw",
+          background: "var(--bg-primary)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "2rem",
+          textAlign: "center",
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999
+        }}
+      >
+        <div
+          className="glass-panel"
+          style={{
+            maxWidth: "460px",
+            width: "100%",
+            padding: "3rem 2rem",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1.5rem"
+          }}
+        >
+          <div
+            style={{
+              width: "72px",
+              height: "72px",
+              borderRadius: "1.25rem",
+              background: "linear-gradient(135deg, rgba(197, 160, 114, 0.2) 0%, rgba(197, 160, 114, 0.05) 100%)",
+              border: "1px solid var(--accent-gold)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--accent-gold)"
+            }}
+          >
+            <Shield size={36} className="spin" />
+          </div>
+
+          <div>
+            <h1
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "2rem",
+                letterSpacing: "0.15em",
+                color: "var(--accent-gold)",
+                margin: "0 0 0.25rem 0"
+              }}
+            >
+              NIYARA
+            </h1>
+            <p style={{ fontSize: "0.75rem", letterSpacing: "0.15em", color: "var(--text-secondary)", textTransform: "uppercase", margin: 0 }}>
+              ARCHIVAL COMMAND PORTAL
+            </p>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", fontSize: "0.9rem", fontWeight: 600 }}>
+            <RefreshCw size={16} className="spin" color="var(--accent-gold)" />
+            <span>Fetching Live Database Records...</span>
+          </div>
+
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.5rem" }}>
+            <div className="skeleton-box" style={{ height: "10px", width: "100%" }} />
+            <div className="skeleton-box" style={{ height: "10px", width: "80%", margin: "0 auto" }} />
+            <div className="skeleton-box" style={{ height: "10px", width: "60%", margin: "0 auto" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="admin-container">
       {/* Sidebar */}
