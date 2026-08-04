@@ -16,95 +16,94 @@ const DEFAULT_SMTP_USER = "polarasmit2504@gmail.com";
 const DEFAULT_SMTP_PASS = "hrvxobebbngadule";
 
 // Create Nodemailer Transporters
-const createTransporter = (useSSL = false) => {
-  const user = process.env.SMTP_USER || DEFAULT_SMTP_USER;
+const createTransporter = (port = 587) => {
+  const user = (process.env.SMTP_USER || DEFAULT_SMTP_USER).trim();
   const rawPass = process.env.SMTP_PASS || DEFAULT_SMTP_PASS;
   const pass = rawPass.replace(/\s+/g, "");
 
-  if (useSSL) {
-    return nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: { user, pass },
-      tls: { rejectUnauthorized: false }
-    });
-  }
-
   return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass }
+    host: "smtp.gmail.com",
+    port: port,
+    secure: port === 465, // true for 465, false for 587
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false }
   });
 };
 
 /**
- * Sends OTP Email via Nodemailer Gmail Engine with Port 465 SSL Fallback
+ * Generates secure 6-digit OTP code and dispatches real email to recipient
  */
 export const sendOTPEmail = async (toEmail, otpCode, purpose = "Verification", name = "Member") => {
-  const userEmail = process.env.SMTP_USER || DEFAULT_SMTP_USER;
+  const userEmail = (process.env.SMTP_USER || DEFAULT_SMTP_USER).trim();
 
   console.log(`\n======================================================`);
-  console.log(`[EMAIL DISPATCH INITIATED]`);
-  console.log(`  To: ${toEmail}`);
-  console.log(`  OTP Code: ${otpCode}`);
-  console.log(`  From Account: ${userEmail}`);
+  console.log(`[REAL OTP EMAIL DISPATCH]`);
+  console.log(`  Recipient: ${toEmail}`);
+  console.log(`  Security Code: ${otpCode}`);
+  console.log(`  Sender: ${userEmail}`);
   console.log(`======================================================\n`);
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || `"NIYARA Concierge" <${userEmail}>`,
+    from: `"NIYARA Archival Concierge" <${userEmail}>`,
     to: toEmail,
-    subject: `[NIYARA Security] Your ${purpose} Verification Code: ${otpCode}`,
+    subject: `[NIYARA] Your ${purpose} Verification Code: ${otpCode}`,
     html: `
-      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #09090b; color: #f4f4f5; padding: 2rem; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #c5a072;">
-        <div style="text-align: center; margin-bottom: 1.5rem;">
-          <h1 style="font-family: Georgia, serif; letter-spacing: 0.1em; color: #c5a072; margin: 0;">NIYARA</h1>
-          <p style="font-size: 0.75rem; letter-spacing: 0.15em; color: #a1a1aa; text-transform: uppercase;">Archival Fashion Concierge</p>
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #09090b; color: #f4f4f5; padding: 2.5rem; border-radius: 12px; max-width: 520px; margin: 0 auto; border: 1px solid #c5a072;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <h1 style="font-family: Georgia, serif; letter-spacing: 0.15em; color: #c5a072; margin: 0; font-size: 2.2rem;">NIYARA</h1>
+          <p style="font-size: 0.75rem; letter-spacing: 0.2em; color: #a1a1aa; text-transform: uppercase; margin-top: 0.25rem;">Archival Fashion Concierge</p>
         </div>
-        <p style="font-size: 0.95rem; color: #e4e4e7;">Dear <strong>${name}</strong>,</p>
-        <p style="font-size: 0.9rem; color: #a1a1aa; line-height: 1.5;">
-          Use the following 6-digit Security OTP code to complete your ${purpose.toLowerCase()} request:
+        
+        <p style="font-size: 1rem; color: #e4e4e7;">Dear <strong>${name}</strong>,</p>
+        <p style="font-size: 0.95rem; color: #a1a1aa; line-height: 1.6;">
+          Your 6-digit security verification code for <strong>${purpose.toLowerCase()}</strong> is provided below:
         </p>
-        <div style="background: rgba(197, 160, 114, 0.15); border: 1px dashed #c5a072; border-radius: 8px; padding: 1.25rem; text-align: center; margin: 1.5rem 0;">
-          <span style="font-size: 2.25rem; font-weight: 800; letter-spacing: 0.35em; color: #c5a072;">${otpCode}</span>
+        
+        <div style="background: linear-gradient(135deg, rgba(197, 160, 114, 0.2) 0%, rgba(197, 160, 114, 0.05) 100%); border: 1px dashed #c5a072; border-radius: 10px; padding: 1.5rem; text-align: center; margin: 1.75rem 0;">
+          <span style="font-size: 2.5rem; font-weight: 800; letter-spacing: 0.35em; color: #c5a072; display: inline-block;">${otpCode}</span>
         </div>
-        <p style="font-size: 0.8rem; color: #71717a; text-align: center;">
-          This security code expires in 10 minutes. If you did not initiate this request, please ignore this email.
+        
+        <p style="font-size: 0.825rem; color: #a1a1aa; text-align: center; line-height: 1.5;">
+          This code will expire in <strong>10 minutes</strong>. Do not share this code with anyone.
         </p>
-        <div style="border-top: 1px solid #27272a; margin-top: 1.5rem; padding-top: 1rem; text-align: center; font-size: 0.7rem; color: #71717a;">
+        
+        <div style="border-top: 1px solid #27272a; margin-top: 2rem; padding-top: 1.25rem; text-align: center; font-size: 0.75rem; color: #71717a;">
           © 2026 NIYARA Archival Fashion Portal. All rights reserved.
         </div>
       </div>
     `
   };
 
-  // Attempt 1: Standard Gmail Service
+  // Attempt 1: Port 587 STARTTLS
   try {
-    const transporter = createTransporter(false);
+    const transporter = createTransporter(587);
     const info = await transporter.sendMail(mailOptions);
-    console.log(`[Gmail Dispatch Success] Sent to ${toEmail} | Message ID: ${info.messageId}`);
+    console.log(`[Gmail 587 Success] Real OTP Email dispatched to ${toEmail} | ID: ${info.messageId}`);
     return {
       success: true,
-      deliveredVia: "Gmail Nodemailer Engine",
-      messageId: info.messageId
+      deliveredVia: "Gmail SMTP Port 587 Engine",
+      messageId: info.messageId,
+      otpCode
     };
-  } catch (error1) {
-    console.warn(`[Gmail Service Attempt Failed]: ${error1.message}. Retrying via Port 465 Direct SSL...`);
-    
-    // Attempt 2: Direct SSL Port 465
+  } catch (err587) {
+    console.warn(`[Port 587 Failed]: ${err587.message}. Trying Port 465 Direct SSL...`);
+
+    // Attempt 2: Port 465 SSL
     try {
-      const sslTransporter = createTransporter(true);
-      const info2 = await sslTransporter.sendMail(mailOptions);
-      console.log(`[Gmail Port 465 Dispatch Success] Sent to ${toEmail} | Message ID: ${info2.messageId}`);
+      const sslTransporter = createTransporter(465);
+      const info465 = await sslTransporter.sendMail(mailOptions);
+      console.log(`[Gmail 465 Success] Real OTP Email dispatched to ${toEmail} | ID: ${info465.messageId}`);
       return {
         success: true,
-        deliveredVia: "Gmail Port 465 SSL Engine",
-        messageId: info2.messageId
+        deliveredVia: "Gmail SMTP Port 465 Engine",
+        messageId: info465.messageId,
+        otpCode
       };
-    } catch (error2) {
-      console.error(`[Gmail SSL Dispatch Error]: ${error2.message}`);
+    } catch (err465) {
+      console.error(`[Gmail Dispatch Failed on Port 465]: ${err465.message}`);
       return {
         success: false,
-        error: error2.message,
+        error: err465.message,
         otpCode
       };
     }
