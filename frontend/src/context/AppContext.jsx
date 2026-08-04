@@ -87,10 +87,13 @@ export const AppProvider = ({ children }) => {
 
   // ---- PRODUCTS FROM MONGODB ----
   const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchProducts = async () => {
+    setIsLoading(true);
+    const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
     try {
-      const res = await fetch("http://localhost:5000/api/products");
+      const res = await fetch(`${API_BASE}/products`);
       const data = await res.json();
       if (data.success && Array.isArray(data.products)) {
         // Map MongoDB product fields to storefront-compatible shape
@@ -122,6 +125,8 @@ export const AppProvider = ({ children }) => {
       }
     } catch (err) {
       console.error("Failed to fetch products from MongoDB:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -886,7 +891,8 @@ export const AppProvider = ({ children }) => {
         updateAdminPinCode,
         logSecurityEvent,
         failedPinAttempts,
-        lockoutTime
+        lockoutTime,
+        isLoading
       }}
     >
       {children}

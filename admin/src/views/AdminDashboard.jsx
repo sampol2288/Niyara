@@ -627,6 +627,21 @@ export const AdminDashboard = () => {
 
         {/* Content Body */}
         <div className="admin-content">
+          {isLoading && (
+            <div className="glass-panel loading-container" style={{ marginBottom: "2rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontSize: "1.05rem", fontWeight: 700 }}>
+                <RefreshCw size={22} className="spin" color="var(--accent-gold)" />
+                <span>FETCHING LIVE MONGODB DATABASE RECORDS...</span>
+              </div>
+              <div style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
+                <div className="skeleton-box" style={{ height: "90px" }} />
+                <div className="skeleton-box" style={{ height: "90px" }} />
+                <div className="skeleton-box" style={{ height: "90px" }} />
+                <div className="skeleton-box" style={{ height: "90px" }} />
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: DASHBOARD */}
           {activeTab === "dashboard" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
