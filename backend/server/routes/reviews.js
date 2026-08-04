@@ -3,7 +3,6 @@ import Review from "../models/Review.js";
 
 const router = express.Router();
 
-// GET /api/reviews - Get reviews
 router.get("/", async (req, res) => {
   try {
     const reviews = await Review.find().sort({ createdAt: -1 });
@@ -13,7 +12,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/reviews - Add customer review
 router.post("/", async (req, res) => {
   try {
     const { author, email, product, rating, comment } = req.body;
@@ -37,7 +35,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PATCH /api/reviews/:id/status - Moderate review status
 router.patch("/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
@@ -50,7 +47,6 @@ router.patch("/:id/status", async (req, res) => {
   }
 });
 
-// DELETE /api/reviews/:id - Delete review
 router.delete("/:id", async (req, res) => {
   try {
     await Review.findOneAndDelete({ id: req.params.id });

@@ -57,7 +57,6 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export const AdminProvider = ({ children }) => {
-  // Theme state
   const [theme, setTheme] = useState("dark");
 
   useEffect(() => {
@@ -72,7 +71,6 @@ export const AdminProvider = ({ children }) => {
     });
   };
 
-  // Toast System
   const [toasts, setToasts] = useState([]);
   const showToast = (text, type = "info") => {
     const id = Date.now() + Math.random();
@@ -82,7 +80,6 @@ export const AdminProvider = ({ children }) => {
     }, 4000);
   };
 
-  // Security & Admin Session State
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     return localStorage.getItem("niyara_admin_authenticated") === "true";
   });
@@ -351,6 +348,7 @@ export const AdminProvider = ({ children }) => {
         discounts,
         reviews,
         categories,
+        setCategories,
         isLoading,
         fetchProducts,
         fetchOrders,

@@ -56,7 +56,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -75,7 +74,6 @@ body {
   background: var(--accent-gold);
 }
 
-/* Layout Utilities */
 .admin-container {
   display: flex;
   min-height: 100vh;
@@ -98,7 +96,6 @@ body {
   width: 100%;
 }
 
-/* Glassmorphism Panel */
 .glass-panel {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-backdrop);
@@ -108,7 +105,6 @@ body {
   box-shadow: var(--shadow-main);
 }
 
-/* Toast Container */
 .toast-container {
   position: fixed;
   bottom: 2rem;
@@ -145,7 +141,6 @@ body {
   }
 }
 
-/* Inputs & Forms */
 .admin-input {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -164,7 +159,6 @@ body {
   box-shadow: 0 0 0 3px var(--accent-gold-soft);
 }
 
-/* Buttons */
 .btn-gold {
   background: linear-gradient(135deg, var(--accent-gold) 0%, #a37c4c 100%);
   color: #000;
@@ -205,7 +199,6 @@ body {
   border-color: var(--accent-gold);
 }
 
-/* Status Badges */
 .badge-status {
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;

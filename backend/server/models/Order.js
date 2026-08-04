@@ -8,19 +8,22 @@ const orderSchema = new mongoose.Schema(
     items: [
       {
         id: String,
-        title: String,
+        name: String,
         price: Number,
         quantity: Number,
-        image: String
+        image: String,
+        selectedColor: String,
+        selectedSize: String
       }
     ],
     total: { type: Number, required: true },
     paymentStatus: { type: String, default: "PAID" },
     fulfillmentStatus: { type: String, default: "UNFULFILLED" },
-    trackingNumber: { type: String, default: "" },
-    shippingAddress: { type: String, default: "" }
+    shippingAddress: { type: String, default: "" },
+    trackingNumber: { type: String, default: "" }
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Order", orderSchema);
+const Order = mongoose.model("Order", orderSchema);
+export default Order;

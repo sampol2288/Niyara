@@ -101,7 +101,6 @@ export const AdminAuthGate = () => {
         position: "relative"
       }}
     >
-      {/* Background glow effects */}
       <div
         style={{
           position: "absolute",
@@ -117,7 +116,6 @@ export const AdminAuthGate = () => {
         }}
       />
 
-      {/* Top right theme toggle */}
       <button
         onClick={toggleTheme}
         style={{
@@ -151,7 +149,6 @@ export const AdminAuthGate = () => {
           zIndex: 10
         }}
       >
-        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <div
             style={{
@@ -185,7 +182,6 @@ export const AdminAuthGate = () => {
           </p>
         </div>
 
-        {/* Tab switcher */}
         <div
           style={{
             display: "grid",
@@ -259,7 +255,6 @@ export const AdminAuthGate = () => {
           </button>
         </div>
 
-        {/* Lockout notification */}
         {remainingLockout > 0 && (
           <div
             style={{
@@ -280,7 +275,6 @@ export const AdminAuthGate = () => {
           </div>
         )}
 
-        {/* Error message */}
         {errorMessage && remainingLockout === 0 && (
           <div
             style={{
@@ -414,7 +408,6 @@ export const AdminAuthGate = () => {
                   ))}
                 </div>
 
-                {/* Keypad */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
                   {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "←"].map((key) => (
                     <button

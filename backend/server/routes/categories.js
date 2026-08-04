@@ -3,7 +3,6 @@ import Category from "../models/Category.js";
 
 const router = express.Router();
 
-// Initial seed categories if DB is empty
 const DEFAULT_CATEGORIES = [
   {
     id: "CAT-101",
@@ -57,7 +56,6 @@ const DEFAULT_CATEGORIES = [
   }
 ];
 
-// GET /api/categories - Fetch all categories
 router.get("/", async (req, res) => {
   try {
     let categories = await Category.find().sort({ createdAt: -1 });
@@ -71,7 +69,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/categories - Create or update category
 router.post("/", async (req, res) => {
   try {
     const { id, name, description, image, isFeatured, status } = req.body;
@@ -99,7 +96,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PATCH /api/categories/:id/status - Toggle status
 router.patch("/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
@@ -112,7 +108,6 @@ router.patch("/:id/status", async (req, res) => {
   }
 });
 
-// DELETE /api/categories/:id - Delete category
 router.delete("/:id", async (req, res) => {
   try {
     await Category.findOneAndDelete({ id: req.params.id });

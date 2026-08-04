@@ -826,7 +826,6 @@ export const AdminDashboard = () => {
           {/* TAB 3: CATEGORIES MANAGEMENT */}
           {activeTab === "categories" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              {/* Category Top Action Bar */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                 <div style={{ position: "relative", minWidth: "280px" }}>
                   <Search size={16} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
@@ -852,7 +851,6 @@ export const AdminDashboard = () => {
                 </button>
               </div>
 
-              {/* Categories Cards Grid */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.25rem" }}>
                 {filteredCategories.map((cat) => {
                   const productCount = products.filter((p) => (p.category || "").toLowerCase() === (cat.name || "").toLowerCase()).length;

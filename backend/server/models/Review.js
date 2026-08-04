@@ -6,11 +6,12 @@ const reviewSchema = new mongoose.Schema(
     author: { type: String, required: true },
     email: { type: String, default: "" },
     product: { type: String, required: true },
-    rating: { type: Number, required: true, min: 1, max: 5 },
+    rating: { type: Number, default: 5 },
     comment: { type: String, required: true },
-    status: { type: String, default: "PENDING" }
+    status: { type: String, default: "APPROVED" }
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Review", reviewSchema);
+const Review = mongoose.model("Review", reviewSchema);
+export default Review;

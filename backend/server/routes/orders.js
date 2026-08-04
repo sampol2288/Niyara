@@ -3,7 +3,6 @@ import Order from "../models/Order.js";
 
 const router = express.Router();
 
-// GET /api/orders - Fetch all orders
 router.get("/", async (req, res) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });
@@ -13,7 +12,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/orders - Place & persist new customer order
 router.post("/", async (req, res) => {
   try {
     const { id, customer, email, items, total, paymentStatus, fulfillmentStatus, shippingAddress } = req.body;
@@ -39,7 +37,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PATCH /api/orders/:id/status - Update order status (Fulfillment / Payment)
 router.patch("/:id/status", async (req, res) => {
   try {
     const { fulfillmentStatus, paymentStatus, trackingNumber } = req.body;

@@ -42,7 +42,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Format returned JSON to remove password
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;

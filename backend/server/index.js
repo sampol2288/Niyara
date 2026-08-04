@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
 import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import productRoutes from "./routes/products.js";
@@ -10,7 +12,14 @@ import discountRoutes from "./routes/discounts.js";
 import userRoutes from "./routes/users.js";
 import categoryRoutes from "./routes/categories.js";
 
-dotenv.config();
+// Ensure .env is loaded cleanly regardless of cwd
+const envPath = fs.existsSync(path.resolve(process.cwd(), ".env"))
+  ? path.resolve(process.cwd(), ".env")
+  : fs.existsSync(path.resolve(process.cwd(), "backend/.env"))
+  ? path.resolve(process.cwd(), "backend/.env")
+  : path.resolve(process.cwd(), "../.env");
+
+dotenv.config({ path: envPath });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -50,11 +59,12 @@ app.get("/api/health", (req, res) => {
 
 // Initialize DB & Start Server
 const startServer = async () => {
-  console.log("Starting NIYARA Backend Server with MongoDB Integration...");
+  console.log("Starting NIYARA Backend Server with Gmail & MongoDB Integration...");
   const dbResult = await connectDB();
   app.listen(PORT, () => {
     console.log(`[Express Server] Running on http://localhost:${PORT}`);
     console.log(`[MongoDB Status] ${dbResult.status} (${dbResult.host || "Atlas Cluster"})`);
+    console.log(`[Gmail Engine] Ready (Account: ${process.env.SMTP_USER || "polarasmit2504@gmail.com"})`);
   });
 };
 

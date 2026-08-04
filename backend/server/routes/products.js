@@ -3,7 +3,6 @@ import Product from "../models/Product.js";
 
 const router = express.Router();
 
-// GET /api/products - Get all catalog products
 router.get("/", async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
@@ -13,26 +12,9 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/products - Create or update product SKU
 router.post("/", async (req, res) => {
   try {
-    const {
-      id,
-      title,
-      category,
-      sku,
-      price,
-      stock,
-      status,
-      image,
-      images,
-      colors,
-      sizes,
-      description,
-      materials,
-      shippingInfo
-    } = req.body;
-
+    const { id, title, category, sku, price, stock, status, image, images, colors, sizes, description, materials, shippingInfo } = req.body;
     if (!title || price === undefined || stock === undefined) {
       return res.status(400).json({ success: false, error: "Title, price, and stock are required" });
     }
@@ -62,7 +44,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/products/:id - Update SKU stock or details
 router.put("/:id", async (req, res) => {
   try {
     const product = await Product.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
@@ -73,7 +54,6 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/products/:id - Delete product from MongoDB
 router.delete("/:id", async (req, res) => {
   try {
     await Product.findOneAndDelete({ id: req.params.id });

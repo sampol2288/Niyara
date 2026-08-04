@@ -3,7 +3,6 @@ import Discount from "../models/Discount.js";
 
 const router = express.Router();
 
-// GET /api/discounts - Get all discount promo codes
 router.get("/", async (req, res) => {
   try {
     const discounts = await Discount.find().sort({ createdAt: -1 });
@@ -13,7 +12,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/discounts - Create promo code
 router.post("/", async (req, res) => {
   try {
     const { code, type, value, usageCap, expires } = req.body;
@@ -37,7 +35,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// DELETE /api/discounts/:id - Delete promo code
 router.delete("/:id", async (req, res) => {
   try {
     await Discount.findOneAndDelete({ id: req.params.id });

@@ -1,15 +1,28 @@
 {
   "name": "niyara",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
+    "start": "node backend/server/index.js",
+    "build": "npm --prefix backend install",
     "frontend": "npm --prefix frontend run dev",
     "backend": "npm --prefix backend run dev",
     "admin": "npm --prefix admin run dev",
-    "dev": "start cmd /k npm --prefix frontend run dev && start cmd /k npm --prefix backend run dev && start cmd /k npm --prefix admin run dev",
+    "dev": "npx -y concurrently -n \"FRONTEND,BACKEND,ADMIN\" -c \"cyan,green,yellow\" \"npm --prefix frontend run dev\" \"npm --prefix backend run dev\" \"npm --prefix admin run dev\"",
+    "dev:windows": "start cmd /k npm --prefix frontend run dev && start cmd /k npm --prefix backend run dev && start cmd /k npm --prefix admin run dev",
     "install:frontend": "npm install --prefix frontend",
     "install:backend": "npm install --prefix backend",
     "install:admin": "npm install --prefix admin",
     "install:all": "npm install --prefix frontend && npm install --prefix backend && npm install --prefix admin"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.1",
+    "nodemailer": "^9.0.3"
   }
 }

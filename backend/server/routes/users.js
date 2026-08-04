@@ -3,7 +3,6 @@ import { User } from "../models/User.js";
 
 const router = express.Router();
 
-// GET /api/users - Fetch all registered users
 router.get("/", async (req, res) => {
   try {
     const users = await User.find().select("-password").sort({ createdAt: -1 });
@@ -13,7 +12,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/users - Create new user account from Admin
 router.post("/", async (req, res) => {
   try {
     const { name, email, password, role, phone } = req.body;
@@ -44,7 +42,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PATCH /api/users/:id/role - Update user role / tier
 router.patch("/:id/role", async (req, res) => {
   try {
     const { role } = req.body;
@@ -61,7 +58,6 @@ router.patch("/:id/role", async (req, res) => {
   }
 });
 
-// DELETE /api/users/:id - Delete user account
 router.delete("/:id", async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
