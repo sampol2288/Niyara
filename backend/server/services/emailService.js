@@ -12,10 +12,13 @@ const envPath = fs.existsSync(path.resolve(process.cwd(), ".env"))
 
 dotenv.config({ path: envPath });
 
+const DEFAULT_SMTP_USER = "polarasmit2504@gmail.com";
+const DEFAULT_SMTP_PASS = "hrvxobebbngadule";
+
 // Create Nodemailer Transporter
 const createTransporter = () => {
-  const user = process.env.SMTP_USER || "polarasmit2504@gmail.com";
-  const rawPass = process.env.SMTP_PASS || "hrvx obeb bnga dule";
+  const user = process.env.SMTP_USER || DEFAULT_SMTP_USER;
+  const rawPass = process.env.SMTP_PASS || DEFAULT_SMTP_PASS;
   const pass = rawPass.replace(/\s+/g, "");
 
   // Use Nodemailer built-in Gmail service configuration for maximum reliability
@@ -45,8 +48,7 @@ const createTransporter = () => {
  * Sends OTP Email via Nodemailer Gmail Engine
  */
 export const sendOTPEmail = async (toEmail, otpCode, purpose = "Verification", name = "Member") => {
-  const userEmail = process.env.SMTP_USER || "polarasmit2504@gmail.com";
-  const rawPass = process.env.SMTP_PASS || "hrvx obeb bnga dule";
+  const userEmail = process.env.SMTP_USER || DEFAULT_SMTP_USER;
 
   console.log(`\n======================================================`);
   console.log(`[EMAIL DISPATCH INITIATED]`);

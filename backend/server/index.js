@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
-import { connectDB } from "./config/db.js";
+import { connectDB, getDBStatus } from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import productRoutes from "./routes/products.js";
 import orderRoutes from "./routes/orders.js";
@@ -37,6 +37,111 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/discounts", discountRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
+
+// Root Landing Page HTML Response
+app.get("/", (req, res) => {
+  const dbStatus = getDBStatus();
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>NIYARA — API Concierge Backend</title>
+      <style>
+        body {
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          background-color: #09090b;
+          color: #f4f4f5;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          padding: 1.5rem;
+        }
+        .card {
+          background: rgba(22, 22, 26, 0.85);
+          border: 1px solid #c5a072;
+          border-radius: 16px;
+          padding: 2.5rem;
+          max-width: 540px;
+          width: 100%;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+          text-align: center;
+        }
+        h1 {
+          font-family: Georgia, serif;
+          letter-spacing: 0.15em;
+          color: #c5a072;
+          margin-bottom: 0.25rem;
+          font-size: 2.25rem;
+        }
+        p.subtitle {
+          font-size: 0.8rem;
+          letter-spacing: 0.15em;
+          color: #a1a1aa;
+          text-transform: uppercase;
+          margin-top: 0;
+          margin-bottom: 2rem;
+        }
+        .badge {
+          display: inline-block;
+          padding: 0.4rem 1rem;
+          border-radius: 9999px;
+          font-weight: 700;
+          font-size: 0.8rem;
+          background: rgba(16, 185, 129, 0.15);
+          color: #10b981;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          margin-bottom: 1.5rem;
+        }
+        .grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.75rem;
+          text-align: left;
+          margin-top: 1.5rem;
+        }
+        .endpoint-item {
+          background: #121215;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 8px;
+          padding: 0.75rem 1rem;
+          font-size: 0.85rem;
+        }
+        .endpoint-item a {
+          color: #c5a072;
+          text-decoration: none;
+          font-family: monospace;
+          font-weight: bold;
+        }
+        .endpoint-item a:hover {
+          text-decoration: underline;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>NIYARA</h1>
+        <p class="subtitle">Archival Fashion API Concierge</p>
+        <div class="badge">● ONLINE & OPERATIONAL</div>
+        <p style="color: #a1a1aa; font-size: 0.9rem;">
+          MongoDB Atlas: <strong style="color:#fff;">${dbStatus.state}</strong> (${dbStatus.host})
+        </p>
+        <div class="grid">
+          <div class="endpoint-item"><a href="/api/health" target="_blank">GET /api/health</a></div>
+          <div class="endpoint-item"><a href="/api/categories" target="_blank">GET /api/categories</a></div>
+          <div class="endpoint-item"><a href="/api/products" target="_blank">GET /api/products</a></div>
+          <div class="endpoint-item"><a href="/api/orders" target="_blank">GET /api/orders</a></div>
+          <div class="endpoint-item"><a href="/api/users" target="_blank">GET /api/users</a></div>
+          <div class="endpoint-item"><a href="/api/discounts" target="_blank">GET /api/discounts</a></div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+});
 
 // Root Health Endpoint
 app.get("/api/health", (req, res) => {
