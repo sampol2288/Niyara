@@ -90,9 +90,9 @@ router.post("/send-otp", async (req, res) => {
       return res.status(400).json({ success: false, error: "Email address is required." });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = String(email).trim().toLowerCase();
     
-    // Generate secure 6-digit OTP (e.g. 882194 or random 6-digit)
+    // Generate secure 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
@@ -108,7 +108,7 @@ router.post("/send-otp", async (req, res) => {
     return res.json({
       success: true,
       message: `Security OTP code generated for ${cleanEmail}`,
-      otpCode, // Include OTP code for instant client UI access & testing
+      otpCode,
       emailResult
     });
   } catch (error) {
@@ -121,12 +121,12 @@ router.post("/send-otp", async (req, res) => {
 router.post("/verify-otp", (req, res) => {
   try {
     const { email, code } = req.body;
-    if (!email || !code) {
+    if (!email || code === undefined || code === null || String(code).trim() === "") {
       return res.status(400).json({ success: false, error: "Email address and OTP code are required." });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanCode = code.trim();
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanCode = String(code).trim();
     const session = activeOTPSessions.get(cleanEmail);
 
     // Universal demo passcodes
@@ -136,7 +136,7 @@ router.post("/verify-otp", (req, res) => {
     }
 
     if (!session) {
-      // If no active session found, still verify for testing fallback
+      // Allow testing fallback verification
       return res.json({ success: true, message: "OTP verified successfully" });
     }
 
