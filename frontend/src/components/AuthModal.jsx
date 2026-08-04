@@ -107,6 +107,10 @@ export const AuthModal = () => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    if (!email || !password) {
+      setErrorMessage("Please enter both email and password.");
+      return;
+    }
     setIsLoading(true);
     const result = await loginUser(email, password);
     setIsLoading(false);
@@ -120,6 +124,10 @@ export const AuthModal = () => {
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    if (!fullName || !email || !password) {
+      setErrorMessage("Please fill out all fields to create an account.");
+      return;
+    }
     if (!agreedTerms) {
       setErrorMessage("Please accept the Terms of Service to create an account.");
       return;
@@ -143,6 +151,10 @@ export const AuthModal = () => {
   const handleResetEmailSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    if (!email) {
+      setErrorMessage("Please enter your registered email address.");
+      return;
+    }
     setIsLoading(true);
     const result = await startResetOtp(email);
     setIsLoading(false);
@@ -367,7 +379,6 @@ export const AuthModal = () => {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="input-minimal"
-                required
               />
             </div>
 
@@ -381,7 +392,6 @@ export const AuthModal = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-minimal"
-                required
               />
             </div>
 
@@ -396,7 +406,6 @@ export const AuthModal = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-minimal"
-                  required
                 />
                 <button
                   type="button"
@@ -450,6 +459,13 @@ export const AuthModal = () => {
               />
               <span>I agree to NIYARA's Terms of Service and Privacy Policy for archive membership.</span>
             </label>
+
+            {errorMessage && (
+              <div style={{ background: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.4)", padding: "0.875rem 1rem", borderRadius: "4px", display: "flex", alignItems: "center", gap: "0.75rem", fontSize: "0.75rem", color: "#f87171" }}>
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }} disabled={isLoading}>
               {isLoading ? (

@@ -93,6 +93,10 @@ export const AuthView = ({ initialTab = "login" }) => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    if (!email || !password) {
+      setErrorMessage("Please enter both email and password.");
+      return;
+    }
     setIsLoading(true);
     const result = await loginUser(email, password);
     setIsLoading(false);
@@ -106,6 +110,10 @@ export const AuthView = ({ initialTab = "login" }) => {
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+    if (!fullName || !email || !password) {
+      setErrorMessage("Please fill out all fields to create an account.");
+      return;
+    }
     if (!agreedTerms) {
       setErrorMessage("Please accept the Terms of Service to create an account.");
       return;
@@ -278,7 +286,7 @@ export const AuthView = ({ initialTab = "login" }) => {
             <form onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <div>
                 <label style={{ fontSize: "0.65rem", letterSpacing: "0.15em", color: "var(--text-secondary)", display: "block", marginBottom: "0.5rem" }}>EMAIL ADDRESS</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-minimal" required />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-minimal" />
               </div>
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
@@ -286,7 +294,7 @@ export const AuthView = ({ initialTab = "login" }) => {
                   <button type="button" onClick={() => setMode("reset_email")} style={{ background: "none", border: "none", color: "var(--accent-camel)", fontSize: "0.65rem", cursor: "pointer" }}>FORGOT?</button>
                 </div>
                 <div style={{ position: "relative" }}>
-                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="input-minimal" required />
+                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="input-minimal" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -302,16 +310,28 @@ export const AuthView = ({ initialTab = "login" }) => {
             <form onSubmit={handleSignupSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <div>
                 <label style={{ fontSize: "0.65rem", letterSpacing: "0.15em", color: "var(--text-secondary)", display: "block", marginBottom: "0.5rem" }}>FULL NAME</label>
-                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-minimal" required />
+                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-minimal" />
               </div>
               <div>
                 <label style={{ fontSize: "0.65rem", letterSpacing: "0.15em", color: "var(--text-secondary)", display: "block", marginBottom: "0.5rem" }}>EMAIL ADDRESS</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-minimal" required />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-minimal" />
               </div>
               <div>
                 <label style={{ fontSize: "0.65rem", letterSpacing: "0.15em", color: "var(--text-secondary)", display: "block", marginBottom: "0.5rem" }}>PASSWORD</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-minimal" required />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-minimal" />
               </div>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.5, cursor: "pointer", marginBottom: "0.5rem" }}>
+                <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: "0.15rem" }} />
+                <span>I agree to NIYARA's Terms of Service and Privacy Policy for archive membership.</span>
+              </label>
+
+              {errorMessage && (
+                <div style={{ background: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.4)", padding: "0.875rem 1rem", borderRadius: "4px", display: "flex", alignItems: "center", gap: "0.75rem", fontSize: "0.75rem", color: "#f87171" }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
               <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }} disabled={isLoading}>
                 {isLoading ? "PROCESSING..." : <>SEND VERIFICATION OTP <ArrowRight size={16} /></>}
               </button>
