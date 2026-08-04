@@ -434,7 +434,7 @@ export const AppProvider = ({ children }) => {
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("niyara_user_orders", JSON.stringify(newOrdersList));
-      } catch (e) {}
+      } catch (e) { }
     }
   };
 
@@ -452,7 +452,7 @@ export const AppProvider = ({ children }) => {
       return o;
     });
     updateOrders(updated);
-    
+
     // Save to MongoDB Database
     fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
       method: "PATCH",
@@ -577,7 +577,7 @@ export const AppProvider = ({ children }) => {
 
     const updated = [newOrder, ...orders];
     updateOrders(updated);
-    
+
     // Save to MongoDB Database Cluster0
     fetch("http://localhost:5000/api/orders", {
       method: "POST",
@@ -670,7 +670,7 @@ export const AppProvider = ({ children }) => {
       if (typeof window !== "undefined") {
         try {
           localStorage.setItem("niyara_audit_logs", JSON.stringify(updated));
-        } catch (e) {}
+        } catch (e) { }
       }
       return updated;
     });
