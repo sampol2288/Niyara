@@ -233,7 +233,7 @@ export const AdminProvider = ({ children }) => {
   const [discounts, setDiscounts] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Synchronizers
   const fetchProducts = async () => {
@@ -312,7 +312,9 @@ export const AdminProvider = ({ children }) => {
       fetchReviews(),
       fetchCategories()
     ]);
-    setIsLoading(false);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
   };
 
   useEffect(() => {
