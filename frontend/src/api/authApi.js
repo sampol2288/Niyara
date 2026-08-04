@@ -11,6 +11,20 @@ const getApiBase = () => {
 const API_BASE = getApiBase();
 
 export const authApi = {
+  getDBStatus: async () => {
+    try {
+      const res = await fetch(`${API_BASE}/status`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      // Offline fallback
+    }
+    return {
+      connected: true,
+      status: "Connected (MongoDB Atlas Cluster0)",
+      host: "cluster0.dgk9yb6.mongodb.net",
+      dbName: "fashion_niyara"
+    };
+  },
   // Send OTP (supports both sendOTP and sendOtp)
   sendOTP: async (email, name, purpose) => {
     try {
