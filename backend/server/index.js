@@ -127,7 +127,7 @@ app.get("/", (req, res) => {
         <p class="subtitle">Archival Fashion API Concierge</p>
         <div class="badge">● ONLINE & OPERATIONAL</div>
         <p style="color: #a1a1aa; font-size: 0.9rem;">
-          MongoDB Atlas: <strong style="color:#fff;">${dbStatus.state}</strong> (${dbStatus.host})
+          MongoDB Atlas: <strong style="color: ${dbStatus.isOnline ? '#10b981' : '#c5a072'};">${dbStatus.state}</strong> (${dbStatus.host})
         </p>
         <div class="grid">
           <div class="endpoint-item"><a href="/api/health" target="_blank">GET /api/health</a></div>
@@ -148,7 +148,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
     service: "NIYARA Full Fashion E-Commerce Backend API",
-    mongodb: "Connected (Cluster0)",
+    mongodb: getDBStatus().state,
     endpoints: [
       "/api/auth",
       "/api/products",
