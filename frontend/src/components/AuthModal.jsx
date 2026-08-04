@@ -26,6 +26,7 @@ export const AuthModal = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [agreedTerms, setAgreedTerms] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // OTP 6-digit State
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -100,8 +101,6 @@ export const AuthModal = () => {
     setErrorMessage("");
     showToast(`Auto-filled verification code ${codeToFill}`);
   };
-
-  const [isLoading, setIsLoading] = useState(false);
 
   // Form Submission Handlers
   const handleLoginSubmit = async (e) => {
@@ -632,7 +631,7 @@ export const AuthModal = () => {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <button
                 type="button"
-                onClick={() => fillDemoUser("julian")}
+                onClick={() => showToast("Google sign-in coming soon.")}
                 className="btn-secondary"
                 style={{ fontSize: "0.7rem", padding: "0.75rem" }}
               >
@@ -640,7 +639,7 @@ export const AuthModal = () => {
               </button>
               <button
                 type="button"
-                onClick={() => fillDemoUser("elena")}
+                onClick={() => showToast("Apple sign-in coming soon.")}
                 className="btn-secondary"
                 style={{ fontSize: "0.7rem", padding: "0.75rem" }}
               >

@@ -25,6 +25,7 @@ export const AuthView = ({ initialTab = "login" }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [agreedTerms, setAgreedTerms] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // OTP 6-digit State
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -87,8 +88,6 @@ export const AuthView = ({ initialTab = "login" }) => {
     setErrorMessage("");
     showToast(`Auto-filled verification code ${codeToFill}`);
   };
-
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
