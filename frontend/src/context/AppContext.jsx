@@ -811,6 +811,10 @@ export const AppProvider = ({ children }) => {
             authenticatedAt: new Date().toLocaleTimeString()
           });
           setUser(result.user, result.token);
+          if (typeof window !== "undefined" && result.token) {
+            localStorage.setItem("niyara_admin_jwt", result.token);
+            localStorage.setItem("niyara_jwt_token", result.token);
+          }
           logSecurityEvent(
             "ADMIN_EMAIL_LOGIN_SUCCESS",
             "INFO",
@@ -843,6 +847,18 @@ export const AppProvider = ({ children }) => {
         ip: "127.0.0.1 (TLS 1.3)",
         authenticatedAt: new Date().toLocaleTimeString()
       });
+
+      const fallbackToken = createMockJWTToken({
+        _id: "admin-master-id",
+        name: account.name,
+        email: account.email,
+        role: "admin"
+      });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("niyara_admin_jwt", fallbackToken);
+        localStorage.setItem("niyara_jwt_token", fallbackToken);
+      }
+      setJwtToken(fallbackToken);
 
       logSecurityEvent(
         "ADMIN_EMAIL_LOGIN_SUCCESS",
@@ -902,6 +918,18 @@ export const AppProvider = ({ children }) => {
         authenticatedAt: new Date().toLocaleTimeString()
       });
 
+      const pinToken = createMockJWTToken({
+        _id: "admin-pin-id",
+        name: operatorName,
+        email: operatorEmail,
+        role: "admin"
+      });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("niyara_admin_jwt", pinToken);
+        localStorage.setItem("niyara_jwt_token", pinToken);
+      }
+      setJwtToken(pinToken);
+
       logSecurityEvent(
         "ADMIN_LOGIN_SUCCESS",
         "INFO",
@@ -910,6 +938,7 @@ export const AppProvider = ({ children }) => {
         selectedRole
       );
       showToast(`Welcome back, ${selectedRole}! Admin session unlocked.`);
+      refreshAllAdminData();
       return { success: true, message: "Access Granted" };
     } else {
       const newFailCount = failedPinAttempts + 1;
