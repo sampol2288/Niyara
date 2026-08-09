@@ -85,6 +85,16 @@ export const AppProvider = ({ children }) => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [theme, setTheme] = useState("dark"); // 'dark' | 'light'
 
+  // ---- TOAST (defined early so all functions below can use it) ----
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
+
   // ---- PRODUCTS FROM MONGODB ----
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -275,51 +285,44 @@ export const AppProvider = ({ children }) => {
 
     const apiResult = await authApi.sendOtp(cleanEmail, name, "signup");
 
-    const generatedCode = apiResult.otpCode || "882194";
-    const previewUrl = apiResult.emailResult?.previewUrl || null;
+    if (!apiResult.success) {
+      return { success: false, error: apiResult.error || "Failed to send verification email." };
+    }
+
+    // OTP code is sent via email only — never stored client-side
     const otpSession = {
       email: cleanEmail,
-      code: generatedCode,
       purpose: "signup",
-      previewUrl,
       payload: {
         name,
         email: cleanEmail,
-        password,
-        role: "member",
-        isVerified: true,
-        phone: "+1 (555) 000-0000",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop"
+        password
       }
     };
     setActiveOtpSession(otpSession);
-    showToast(`⚡ Verification OTP Code: ${generatedCode}`);
-    return { success: true, otpCode: generatedCode, previewUrl };
+    showToast(`Verification code sent to ${cleanEmail}. Check your inbox.`);
+    return { success: true };
   };
 
   const startResetOtp = async (email) => {
     const cleanEmail = email.trim().toLowerCase();
-    const found = registeredUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!found) {
-      return { success: false, error: "No registered account found with this email." };
+
+    // Send OTP via backend — the backend validates the email exists
+    const apiResult = await authApi.sendOtp(cleanEmail, "", "reset");
+
+    if (!apiResult.success) {
+      return { success: false, error: apiResult.error || "Failed to send reset email. Please check the address and try again." };
     }
 
-    const apiResult = await authApi.sendOtp(cleanEmail, found.name, "reset");
-    const generatedCode = apiResult.otpCode || "882194";
-    const previewUrl = apiResult.emailResult?.previewUrl || null;
+    // Store only the email and purpose — no OTP code client-side
     const otpSession = {
       email: cleanEmail,
-      code: generatedCode,
       purpose: "reset",
-      previewUrl,
       payload: { email: cleanEmail }
     };
     setActiveOtpSession(otpSession);
-    if (previewUrl) {
-      console.log(`[Nodemailer Preview Link]: ${previewUrl}`);
-    }
-    showToast(`Password reset code sent to ${cleanEmail}`);
-    return { success: true, otpCode: generatedCode, previewUrl };
+    showToast(`Password reset code sent to ${cleanEmail}. Check your inbox.`);
+    return { success: true };
   };
 
   const verifyOtpCode = async (enteredCode) => {
@@ -327,25 +330,30 @@ export const AppProvider = ({ children }) => {
       return { success: false, error: "No active verification session found." };
     }
 
+    // Verify OTP strictly via backend — no client-side bypass
     const apiCheck = await authApi.verifyOtp(activeOtpSession.email, enteredCode);
-    if (!apiCheck.success && enteredCode !== activeOtpSession.code && enteredCode !== "123456") {
-      return { success: false, error: apiCheck.error || "Invalid verification code. Use demo code 882194 or 123456." };
+    if (!apiCheck.success) {
+      return { success: false, error: apiCheck.error || "Invalid verification code." };
     }
 
     if (activeOtpSession.purpose === "signup") {
       const newUserPayload = activeOtpSession.payload;
-      const apiResult = await authApi.registerUser(
-        newUserPayload.name,
-        newUserPayload.email,
-        newUserPayload.password
-      );
+      const apiResult = await authApi.register({
+        name: newUserPayload.name,
+        email: newUserPayload.email,
+        password: newUserPayload.password
+      });
 
-      const createdUser = apiResult.user || newUserPayload;
+      if (!apiResult.success) {
+        return { success: false, error: apiResult.error || "Registration failed." };
+      }
+
+      const createdUser = apiResult.user;
       const updatedList = [...registeredUsers, createdUser];
       updateRegisteredUsers(updatedList);
       setUser(createdUser, apiResult.token);
       setActiveOtpSession(null);
-      showToast("Account verified & created in MongoDB with JWT!");
+      showToast(`Welcome, ${createdUser.name}! Account created successfully.`);
       return { success: true, user: createdUser, nextStep: "complete" };
     }
 
@@ -356,27 +364,21 @@ export const AppProvider = ({ children }) => {
     return { success: true };
   };
 
-  const completePasswordReset = (newPassword) => {
+  const completePasswordReset = async (newPassword) => {
     if (!activeOtpSession || activeOtpSession.purpose !== "reset") {
       return { success: false, error: "Session expired. Please request a new reset code." };
     }
 
     const email = activeOtpSession.email;
-    const updatedList = registeredUsers.map((u) => {
-      if (u.email.toLowerCase() === email.toLowerCase()) {
-        return { ...u, password: newPassword };
-      }
-      return u;
-    });
 
-    updateRegisteredUsers(updatedList);
-    const updatedUser = updatedList.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (updatedUser) {
-      const newToken = createMockJWTToken(updatedUser);
-      setUser(updatedUser, newToken);
+    // Call backend to persist the new password (hashed)
+    const apiResult = await authApi.resetPassword(email, newPassword);
+    if (!apiResult.success) {
+      return { success: false, error: apiResult.error || "Failed to update password." };
     }
+
     setActiveOtpSession(null);
-    showToast("Password updated successfully! JWT token renewed.");
+    showToast("Password updated successfully!");
     return { success: true };
   };
 
@@ -454,25 +456,17 @@ export const AppProvider = ({ children }) => {
     updateOrders(updated);
 
     // Save to MongoDB Database
-    fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    fetch(`${apiBase}/orders/${orderId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fulfillmentStatus: newStatus, trackingNumber })
-    }).catch((e) => console.log("[MongoDB Sync] Offline mode fallback:", e.message));
+    }).catch((e) => console.warn("[Order Status Sync]:", e.message));
 
     showToast(`Order ${orderId} status updated to ${newStatus}`);
   };
 
-  const [toast, setToast] = useState(null);
-
   const FREE_SHIPPING_THRESHOLD = 200;
-
-  const showToast = (message) => {
-    setToast(message);
-    setTimeout(() => {
-      setToast(null);
-    }, 3000);
-  };
 
   const openPDP = (product) => {
     setSelectedProduct(product);
@@ -578,10 +572,15 @@ export const AppProvider = ({ children }) => {
     const updated = [newOrder, ...orders];
     updateOrders(updated);
 
-    // Save to MongoDB Database Cluster0
-    fetch("http://localhost:5000/api/orders", {
+    // Save to MongoDB Database
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const headers = { "Content-Type": "application/json" };
+    if (jwtToken) {
+      headers["Authorization"] = `Bearer ${jwtToken}`;
+    }
+    fetch(`${apiBase}/orders`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         id: newOrder.id,
         customer: newOrder.customer,
@@ -592,7 +591,7 @@ export const AppProvider = ({ children }) => {
         fulfillmentStatus: newOrder.fulfillmentStatus,
         shippingAddress: typeof newOrder.shippingAddress === "object" ? JSON.stringify(newOrder.shippingAddress) : newOrder.shippingAddress
       })
-    }).catch((e) => console.log("[MongoDB Order Sync Error]:", e.message));
+    }).catch((e) => console.warn("[Order Sync Error]:", e.message));
 
     setCart([]);
     showToast(`Order ${newOrder.id} placed successfully!`);

@@ -1,9 +1,11 @@
 import express from "express";
 import Product from "../models/Product.js";
+import { protectJWT } from "./auth.js";
+import { adminOnly } from "../middleware/adminOnly.js";
 
 const router = express.Router();
 
-// GET all products created by admin
+// GET all products — Public read access
 router.get("/", async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
@@ -13,12 +15,23 @@ router.get("/", async (req, res) => {
   }
 });
 
-// CREATE or UPDATE product SKU by admin
-router.post("/", async (req, res) => {
+// GET single product by ID — Public read access
+router.get("/:id", async (req, res) => {
+  try {
+    const product = await Product.findOne({ id: req.params.id });
+    if (!product) return res.status(404).json({ success: false, error: "Product not found." });
+    return res.json({ success: true, product });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// CREATE or UPDATE product SKU — Admin only
+router.post("/", protectJWT, adminOnly, async (req, res) => {
   try {
     const { id, title, category, sku, price, stock, status, image, images, colors, sizes, description, materials, shippingInfo } = req.body;
     if (!title || price === undefined || stock === undefined) {
-      return res.status(400).json({ success: false, error: "Title, price, and stock are required" });
+      return res.status(400).json({ success: false, error: "Title, price, and stock are required." });
     }
 
     const prodId = id || `SKU-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -46,22 +59,23 @@ router.post("/", async (req, res) => {
   }
 });
 
-// UPDATE product by admin
-router.put("/:id", async (req, res) => {
+// UPDATE product — Admin only
+router.put("/:id", protectJWT, adminOnly, async (req, res) => {
   try {
     const product = await Product.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
-    if (!product) return res.status(404).json({ success: false, error: "Product not found" });
+    if (!product) return res.status(404).json({ success: false, error: "Product not found." });
     return res.json({ success: true, product });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// DELETE product by admin
-router.delete("/:id", async (req, res) => {
+// DELETE product — Admin only
+router.delete("/:id", protectJWT, adminOnly, async (req, res) => {
   try {
-    await Product.findOneAndDelete({ id: req.params.id });
-    return res.json({ success: true, message: "Product SKU deleted from database" });
+    const product = await Product.findOneAndDelete({ id: req.params.id });
+    if (!product) return res.status(404).json({ success: false, error: "Product not found." });
+    return res.json({ success: true, message: "Product deleted successfully." });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }

@@ -1,4 +1,4 @@
-# Node modules (ignored everywhere)
+# Node modules
 node_modules/
 **/node_modules/
 admin/node_modules/
@@ -11,21 +11,36 @@ dist/
 build/
 **/build/
 
-# Environment files
+# Environment files — NEVER commit these
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
 **/.env
 **/.env.local
+**/.env.development
+**/.env.production
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Editor directories
+.vscode/settings.json
+.idea/
+
+# Temporary files
+*.tmp
+*.temp

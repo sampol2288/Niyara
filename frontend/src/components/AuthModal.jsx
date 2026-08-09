@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { X, Lock, Mail, User, Eye, EyeOff, ShieldCheck, ArrowRight, RefreshCw, KeyRound, AlertCircle } from "lucide-react";
+import { X, Lock, Mail, User, Eye, EyeOff, ShieldCheck, ArrowRight, RefreshCw, KeyRound, AlertCircle, Copy, CheckCircle } from "lucide-react";
 
 export const AuthModal = () => {
   const {
@@ -32,6 +32,8 @@ export const AuthModal = () => {
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const otpInputRefs = useRef([]);
   const [resendTimer, setResendTimer] = useState(30);
+  const [isResending, setIsResending] = useState(false);
+  const [otpCopied, setOtpCopied] = useState(false);
 
   // Reset errors when mode changes
   useEffect(() => {
@@ -96,10 +98,55 @@ export const AuthModal = () => {
   };
 
   const autofillDemoOtp = () => {
-    const codeToFill = activeOtpSession?.code || "882194";
+    const codeToFill = activeOtpSession?.code;
+    if (!codeToFill) {
+      showToast("Please enter the 6-digit verification code sent to your email.");
+      return;
+    }
     setOtpDigits(codeToFill.split(""));
     setErrorMessage("");
     showToast(`Auto-filled verification code ${codeToFill}`);
+    // Auto-focus last box
+    setTimeout(() => otpInputRefs.current[5]?.focus(), 50);
+  };
+
+  const handleCopyOtp = async () => {
+    const code = activeOtpSession?.code;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setOtpCopied(true);
+      setTimeout(() => setOtpCopied(false), 2000);
+      showToast(`Code ${code} copied to clipboard!`);
+    } catch (e) {
+      autofillDemoOtp();
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (isResending || !activeOtpSession) return;
+    setIsResending(true);
+    try {
+      // Call the appropriate resend function based on purpose
+      if (activeOtpSession.purpose === "signup" && activeOtpSession.payload) {
+        await startSignupOtp(
+          activeOtpSession.payload.name,
+          activeOtpSession.email,
+          activeOtpSession.payload.password
+        );
+      } else if (activeOtpSession.purpose === "reset") {
+        await startResetOtp(activeOtpSession.email);
+      } else {
+        showToast(`New code re-sent to ${activeOtpSession.email}`);
+      }
+      setResendTimer(30);
+      setOtpDigits(["", "", "", "", "", ""]);
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
+    } catch (e) {
+      showToast("Failed to resend. Please try again.");
+    } finally {
+      setIsResending(false);
+    }
   };
 
   // Form Submission Handlers
@@ -111,12 +158,18 @@ export const AuthModal = () => {
       return;
     }
     setIsLoading(true);
-    const result = await loginUser(email, password);
-    setIsLoading(false);
-    if (result.success) {
-      setIsAuthModalOpen(false);
-    } else {
-      setErrorMessage(result.error);
+    try {
+      const result = await loginUser(email, password);
+      if (result.success) {
+        setIsAuthModalOpen(false);
+      } else {
+        setErrorMessage(result.error || "Login failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -137,13 +190,18 @@ export const AuthModal = () => {
     }
 
     setIsLoading(true);
-    const result = await startSignupOtp(fullName, email, password);
-    setIsLoading(false);
-    
-    if (result.success) {
-      setAuthMode("otp");
-    } else {
-      setErrorMessage(result.error);
+    try {
+      const result = await startSignupOtp(fullName, email, password);
+      if (result.success) {
+        setAuthMode("otp");
+      } else {
+        setErrorMessage(result.error || "Something went wrong. Please try again.");
+      }
+    } catch (err) {
+      console.error("Signup error:", err);
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -155,12 +213,18 @@ export const AuthModal = () => {
       return;
     }
     setIsLoading(true);
-    const result = await startResetOtp(email);
-    setIsLoading(false);
-    if (result.success) {
-      setAuthMode("otp");
-    } else {
-      setErrorMessage(result.error);
+    try {
+      const result = await startResetOtp(email);
+      if (result.success) {
+        setAuthMode("otp");
+      } else {
+        setErrorMessage(result.error || "Failed to send reset code. Please try again.");
+      }
+    } catch (err) {
+      console.error("Reset OTP error:", err);
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -518,11 +582,71 @@ export const AuthModal = () => {
               <div style={{ width: "50px", height: "50px", borderRadius: "50%", background: "rgba(197, 160, 114, 0.15)", color: "var(--accent-camel)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
                 <KeyRound size={24} />
               </div>
-              <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                We've dispatched a 6-digit security code to your email <br />
+              <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
+                We've dispatched a 6-digit security code to<br />
                 <strong style={{ color: "var(--text-primary)" }}>{activeOtpSession?.email || email}</strong>
               </p>
             </div>
+
+            {/* OTP Dev Helper Banner - shows the actual OTP for easy testing */}
+            {activeOtpSession?.code && (
+              <div style={{
+                background: "rgba(197, 160, 114, 0.08)",
+                border: "1px dashed rgba(197, 160, 114, 0.5)",
+                borderRadius: "8px",
+                padding: "0.875rem 1rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "0.75rem"
+              }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: "0.6rem", letterSpacing: "0.15em", color: "var(--accent-camel)", textTransform: "uppercase", fontWeight: 600 }}>YOUR CODE</p>
+                  <p style={{ margin: "0.25rem 0 0", fontSize: "1.5rem", fontWeight: 800, letterSpacing: "0.3em", color: "var(--text-primary)" }}>{activeOtpSession.code}</p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <button
+                    type="button"
+                    onClick={autofillDemoOtp}
+                    style={{
+                      background: "rgba(197, 160, 114, 0.15)",
+                      border: "1px solid rgba(197, 160, 114, 0.4)",
+                      borderRadius: "4px",
+                      color: "var(--accent-camel)",
+                      fontSize: "0.65rem",
+                      letterSpacing: "0.1em",
+                      padding: "0.35rem 0.65rem",
+                      cursor: "pointer",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    AUTO-FILL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyOtp}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid var(--border-light)",
+                      borderRadius: "4px",
+                      color: otpCopied ? "#10b981" : "var(--text-muted)",
+                      fontSize: "0.65rem",
+                      letterSpacing: "0.1em",
+                      padding: "0.35rem 0.65rem",
+                      cursor: "pointer",
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {otpCopied ? <><CheckCircle size={11} /> COPIED</> : <><Copy size={11} /> COPY</>}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* 6 OTP Input Boxes */}
             <div className="otp-inputs-responsive" onPaste={handleOtpPaste}>
@@ -554,7 +678,7 @@ export const AuthModal = () => {
             </div>
 
             <button type="submit" className="btn-camel" style={{ width: "100%", padding: "1rem" }}>
-              VERIFY & CONTINUE
+              VERIFY &amp; CONTINUE
             </button>
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", color: "var(--text-muted)" }}>
@@ -564,13 +688,11 @@ export const AuthModal = () => {
               ) : (
                 <button
                   type="button"
-                  onClick={() => {
-                    setResendTimer(30);
-                    showToast(`New code re-sent to ${email}`);
-                  }}
-                  style={{ background: "none", border: "none", color: "var(--accent-camel)", cursor: "pointer", fontWeight: 600 }}
+                  onClick={handleResendOtp}
+                  disabled={isResending}
+                  style={{ background: "none", border: "none", color: "var(--accent-camel)", cursor: isResending ? "not-allowed" : "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.35rem", opacity: isResending ? 0.6 : 1 }}
                 >
-                  Resend OTP
+                  {isResending ? <><RefreshCw size={13} className="spin" /> Sending...</> : "Resend OTP"}
                 </button>
               )}
             </div>

@@ -59,7 +59,7 @@ export const ShopView = () => {
             </p>
           </div>
           <span style={{ fontSize: "0.875rem", color: "var(--text-muted)", letterSpacing: "0.1em" }}>
-            124 Results
+            {filtered.length} {filtered.length === 1 ? "Result" : "Results"}
           </span>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { CheckoutView } from "./views/CheckoutView";
 import { ContactView } from "./views/ContactView";
 import { JournalView } from "./views/JournalView";
 import { AdminView } from "./views/AdminView";
+import { AuthPagesRouter } from "./views/auth/AuthPagesRouter";
 import { CartDrawer } from "./components/CartDrawer";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { AuthModal } from "./components/AuthModal";
@@ -36,6 +37,8 @@ const AppContent = () => {
         return <JournalView />;
       case "admin":
         return <AdminView />;
+      case "auth":
+        return <AuthPagesRouter />;
       case "home":
       default:
         return <HomeView />;

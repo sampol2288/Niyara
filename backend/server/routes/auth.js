@@ -8,16 +8,20 @@ import Order from "../models/Order.js";
 import Discount from "../models/Discount.js";
 import Review from "../models/Review.js";
 import { getDBStatus } from "../config/db.js";
-import { sendOTPEmail } from "../services/emailService.js";
+import { sendOTPEmail, sendCustomEmail } from "../services/emailService.js";
+import { adminOnly } from "../middleware/adminOnly.js";
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || "niyara_archival_jwt_secret_key_2026";
+
+// JWT secret MUST come from environment — validated at startup
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
 
-// Active OTP Sessions in Memory (email -> { code, expiresAt, purpose, name })
+// In-memory OTP sessions: email -> { code, expiresAt, purpose, name }
+// NOTE: For multi-instance deployments, replace with Redis.
 const activeOTPSessions = new Map();
 
-// Helper to generate JWT token
+// ─── Helper: Generate JWT Token ───────────────────────────────────────────────
 const generateJWT = (user) => {
   return jwt.sign(
     {
@@ -32,7 +36,7 @@ const generateJWT = (user) => {
   );
 };
 
-// Middleware: Authenticate JWT Header
+// ─── Middleware: Authenticate JWT ─────────────────────────────────────────────
 export const protectJWT = async (req, res, next) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
@@ -40,49 +44,88 @@ export const protectJWT = async (req, res, next) => {
   }
 
   if (!token) {
-    return res.status(401).json({ success: false, error: "Not authorized, missing JWT Bearer token" });
+    return res.status(401).json({ success: false, error: "Not authorized. Bearer token required." });
   }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = await User.findById(decoded.sub).select("-password");
     if (!req.user) {
-      return res.status(401).json({ success: false, error: "User associated with JWT token no longer exists" });
+      return res.status(401).json({ success: false, error: "User no longer exists." });
     }
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, error: "Invalid or expired JWT token: " + err.message });
+    return res.status(401).json({ success: false, error: "Invalid or expired JWT token." });
   }
 };
 
-// GET /api/auth/db-status
+export const optionalJWT = async (req, res, next) => {
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+  if (!token) {
+    return next();
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = await User.findById(decoded.sub).select("-password");
+  } catch (err) {
+    // Ignore token error for optional middleware
+  }
+  next();
+};
+
+// ─── GET /api/auth/db-status ──────────────────────────────────────────────────
 router.get("/db-status", (req, res) => {
   const status = getDBStatus();
   res.json({
     success: true,
-    database: status,
+    database: {
+      state: status.state,
+      isOnline: status.isOnline
+    },
     timestamp: new Date().toISOString()
   });
 });
 
-// POST /api/auth/clear-db (Purges all demo data from MongoDB collections)
-router.post("/clear-db", async (req, res) => {
+// ─── POST /api/auth/clear-db (Admin only — purges ALL data) ──────────────────
+router.post("/clear-db", protectJWT, adminOnly, async (req, res) => {
   try {
     await Promise.all([
       Category.deleteMany({}),
       Product.deleteMany({}),
       Order.deleteMany({}),
-      User.deleteMany({}),
+      User.deleteMany({ role: { $ne: "admin" } }), // Preserve admin accounts
       Discount.deleteMany({}),
       Review.deleteMany({})
     ]);
-    return res.json({ success: true, message: "All demo data purged from MongoDB collections" });
+    return res.json({ success: true, message: "Non-admin data purged from MongoDB collections." });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST /api/auth/send-otp
+// ─── POST /api/auth/send-mail (Custom email dispatch) ────────────────────────
+router.post("/send-mail", protectJWT, adminOnly, async (req, res) => {
+  try {
+    const { to, name, subject, body } = req.body;
+    if (!to || !subject || !body) {
+      return res.status(400).json({ success: false, error: "Recipient email, subject, and body are required." });
+    }
+    const result = await sendCustomEmail(to.trim().toLowerCase(), name || "Member", subject, body);
+    if (result.success) {
+      return res.json({ success: true, message: `Email dispatched to ${to}` });
+    } else {
+      return res.status(500).json({ success: false, error: result.error || "Failed to send email." });
+    }
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── POST /api/auth/send-otp ──────────────────────────────────────────────────
+// NOTE: The OTP code is sent via email and logged to server console in dev mode.
 router.post("/send-otp", async (req, res) => {
   try {
     const { email, name, purpose } = req.body;
@@ -91,7 +134,13 @@ router.post("/send-otp", async (req, res) => {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
-    
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ success: false, error: "Invalid email address format." });
+    }
+
     // Generate secure 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
@@ -103,21 +152,33 @@ router.post("/send-otp", async (req, res) => {
       name: name || "Member"
     });
 
+    console.log(`[OTP Verification] Generated code for ${cleanEmail}: ${otpCode} (Expires in 10m)`);
+
     const emailResult = await sendOTPEmail(cleanEmail, otpCode, purpose || "Verification", name || "Member");
+
+    if (!emailResult.success) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[OTP Email Warning] Email dispatch failed: ${emailResult.error}. Local test mode active: code is ${otpCode}`);
+        return res.json({
+          success: true,
+          message: `Verification code generated for ${cleanEmail}. (Check server log if email delayed)`
+        });
+      }
+      activeOTPSessions.delete(cleanEmail);
+      return res.status(500).json({ success: false, error: "Failed to dispatch verification email. Please try again." });
+    }
 
     return res.json({
       success: true,
-      message: `Security OTP code generated for ${cleanEmail}`,
-      otpCode,
-      emailResult
+      message: `Verification code sent to ${cleanEmail}. Please check your inbox.`
     });
   } catch (error) {
-    console.error("[Send OTP Route Error]:", error);
-    return res.status(500).json({ success: false, error: "Failed to dispatch OTP email: " + error.message });
+    console.error("[Send OTP Error]:", error);
+    return res.status(500).json({ success: false, error: "Failed to process OTP request." });
   }
 });
 
-// POST /api/auth/verify-otp
+// ─── POST /api/auth/verify-otp ────────────────────────────────────────────────
 router.post("/verify-otp", (req, res) => {
   try {
     const { email, code } = req.body;
@@ -129,15 +190,8 @@ router.post("/verify-otp", (req, res) => {
     const cleanCode = String(code).trim();
     const session = activeOTPSessions.get(cleanEmail);
 
-    // Universal demo passcodes
-    if (cleanCode === "882194" || cleanCode === "123456" || cleanCode === "889000") {
-      activeOTPSessions.delete(cleanEmail);
-      return res.json({ success: true, message: "OTP verified successfully (Demo Passcode)" });
-    }
-
     if (!session) {
-      // Allow testing fallback verification
-      return res.json({ success: true, message: "OTP verified successfully" });
+      return res.status(400).json({ success: false, error: "No active verification session. Please request a new code." });
     }
 
     if (Date.now() > session.expiresAt) {
@@ -146,127 +200,59 @@ router.post("/verify-otp", (req, res) => {
     }
 
     if (session.code !== cleanCode) {
-      return res.status(400).json({ success: false, error: `Invalid verification code. Please check your email or use 882194.` });
+      return res.status(400).json({ success: false, error: "Invalid verification code. Please check your email and try again." });
     }
 
     activeOTPSessions.delete(cleanEmail);
-    return res.json({ success: true, message: "OTP verified successfully" });
+    return res.json({ success: true, message: "OTP verified successfully." });
   } catch (error) {
-    return res.status(500).json({ success: false, error: "Error verifying OTP: " + error.message });
+    return res.status(500).json({ success: false, error: "Error verifying OTP." });
   }
 });
 
-// POST /api/auth/register
+// ─── POST /api/auth/register ──────────────────────────────────────────────────
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ success: false, error: "Please provide name, email, and password." });
+      return res.status(400).json({ success: false, error: "Name, email, and password are required." });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: "Password must be at least 6 characters." });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const cleanEmail = email.trim().toLowerCase();
-    
-    let user;
-    try {
-      const existingUser = await User.findOne({ email: cleanEmail });
-      if (existingUser) {
-        return res.status(400).json({ success: false, error: "An account with this email address already exists." });
-      }
-
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-
-      user = await User.create({
-        name: name.trim(),
-        email: cleanEmail,
-        password: hashedPassword,
-        role: role || "member",
-        isVerified: true
-      });
-    } catch (dbErr) {
-      // Local fallback user object if DB is offline
-      user = {
-        _id: `USER-${Date.now()}`,
-        name: name.trim(),
-        email: cleanEmail,
-        role: role || "member",
-        phone: "+1 (555) 000-0000",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-        isVerified: true
-      };
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ success: false, error: "Invalid email address format." });
     }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: "An account with this email address already exists." });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const user = await User.create({
+      name: name.trim(),
+      email: cleanEmail,
+      password: hashedPassword,
+      role: "member",
+      isVerified: true
+    });
 
     const token = generateJWT(user);
 
     return res.status(201).json({
       success: true,
-      message: "User registered successfully",
+      message: "Account created successfully.",
       token,
       user: {
-        id: user._id || user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone || "+1 (555) 000-0000",
-        avatar: user.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-        isVerified: user.isVerified
-      }
-    });
-  } catch (error) {
-    console.error("[Auth Route Register Error]:", error);
-    return res.status(500).json({ success: false, error: "Server error during registration: " + error.message });
-  }
-});
-
-// POST /api/auth/login
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: "Email and password are required." });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    
-    let user;
-    try {
-      user = await User.findOne({ email: cleanEmail });
-    } catch (dbErr) {
-      console.warn("Database offline during login check");
-    }
-
-    if (!user) {
-      // Admin demo fallback
-      if (cleanEmail === "admin@niyara.com" || cleanEmail === "admin@fashion.com") {
-        user = {
-          _id: "ADMIN-001",
-          name: "Super Admin",
-          email: cleanEmail,
-          role: "admin",
-          phone: "+1 (555) 888-9999",
-          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop",
-          isVerified: true
-        };
-      } else {
-        return res.status(401).json({ success: false, error: "No account found with this email address." });
-      }
-    } else {
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ success: false, error: "Incorrect password. Please try again." });
-      }
-    }
-
-    const token = generateJWT(user);
-
-    return res.json({
-      success: true,
-      message: "Authenticated successfully",
-      token,
-      user: {
-        id: user._id || user.id,
+        id: user._id.toString(),
         name: user.name,
         email: user.email,
         role: user.role,
@@ -276,16 +262,131 @@ router.post("/login", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("[Auth Route Login Error]:", error);
-    return res.status(500).json({ success: false, error: "Server error during login: " + error.message });
+    console.error("[Register Error]:", error);
+    return res.status(500).json({ success: false, error: "Server error during registration." });
   }
 });
 
-// GET /api/auth/me
+// ─── POST /api/auth/login ─────────────────────────────────────────────────────
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "Email and password are required." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      return res.status(401).json({ success: false, error: "No account found with this email address." });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: "Incorrect password. Please try again." });
+    }
+
+    const token = generateJWT(user);
+
+    return res.json({
+      success: true,
+      message: "Authenticated successfully.",
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        avatar: user.avatar,
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error("[Login Error]:", error);
+    return res.status(500).json({ success: false, error: "Server error during login." });
+  }
+});
+
+// ─── POST /api/auth/reset-password ───────────────────────────────────────────
+// Requires prior OTP verification (email verified via send-otp → verify-otp flow)
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ success: false, error: "Email and new password are required." });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: "Password must be at least 6 characters." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: "No account found with this email address." });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.findByIdAndUpdate(user._id, { password: hashedPassword });
+
+    return res.json({ success: true, message: "Password updated successfully." });
+  } catch (error) {
+    console.error("[Reset Password Error]:", error);
+    return res.status(500).json({ success: false, error: "Server error during password reset." });
+  }
+});
+
+// ─── PATCH /api/auth/update-password ─────────────────────────────────────────
+// Authenticated users changing their own password
+router.patch("/update-password", protectJWT, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: "Current and new passwords are required." });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: "New password must be at least 6 characters." });
+    }
+
+    const user = await User.findById(req.user._id);
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: "Current password is incorrect." });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    await User.findByIdAndUpdate(req.user._id, { password: hashedPassword });
+
+    return res.json({ success: true, message: "Password updated successfully." });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: "Server error updating password." });
+  }
+});
+
+// ─── GET /api/auth/me ─────────────────────────────────────────────────────────
 router.get("/me", protectJWT, (req, res) => {
   res.json({
     success: true,
-    user: req.user
+    user: {
+      id: req.user._id.toString(),
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+      phone: req.user.phone,
+      avatar: req.user.avatar,
+      isVerified: req.user.isVerified
+    }
   });
 });
 

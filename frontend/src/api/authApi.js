@@ -1,127 +1,189 @@
+/**
+ * NIYARA Auth API Client
+ * Connects to the Express backend for all authentication operations.
+ */
+
 const getApiBase = () => {
-  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== "") {
-    return import.meta.env.VITE_API_URL.trim();
+  let raw = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
+  if (!raw) return "http://localhost:5000/api";
+  if (!raw.endsWith("/api")) {
+    raw += "/api";
   }
-  if (typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
-    return "https://niyara.onrender.com/api";
-  }
-  return "http://localhost:5000/api";
+  return raw;
 };
 
 const API_BASE = getApiBase();
 
+/**
+ * Helper: Make a JSON API request with standard error handling
+ */
+const apiRequest = async (endpoint, options = {}) => {
+  try {
+    const url = `${API_BASE}${endpoint}`;
+    const config = {
+      headers: { "Content-Type": "application/json" },
+      ...options
+    };
+    const res = await fetch(url, config);
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error(`[API Error] Request to ${endpoint} failed:`, error);
+    return {
+      success: false,
+      error: `Unable to connect to server (${API_BASE}). Please ensure the backend server is running.`
+    };
+  }
+};
+
 export const authApi = {
+  /**
+   * Get backend health / DB status
+   */
   getDBStatus: async () => {
     try {
-      const res = await fetch(`${API_BASE}/status`);
-      if (res.ok) return await res.json();
-    } catch (e) {
-      // Offline fallback
-    }
-    return {
-      connected: true,
-      status: "Connected (MongoDB Atlas Cluster0)",
-      host: "cluster0.dgk9yb6.mongodb.net",
-      dbName: "fashion_niyara"
-    };
-  },
-  // Send OTP (supports both sendOTP and sendOtp)
-  sendOTP: async (email, name, purpose) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, purpose })
-      });
-      return await res.json();
-    } catch (e) {
-      const demoOtp = "882194";
-      console.log(`[Offline Fallback OTP]: ${demoOtp}`);
+      const data = await apiRequest("/health");
       return {
-        success: true,
-        message: `Security OTP sent to ${email} (Demo Fallback: ${demoOtp})`,
-        otpCode: demoOtp
+        connected: data.mongodb === "Connected",
+        status: data.mongodb || "Unknown",
+        host: "MongoDB Atlas"
       };
+    } catch (e) {
+      return { connected: false, status: "Unreachable", host: "N/A" };
     }
   },
 
+  /**
+   * Send OTP email for email verification.
+   * NOTE: The OTP code is sent via email only — it is NOT returned in the API response.
+   */
+  sendOTP: async (email, name, purpose) => {
+    const res = await apiRequest("/auth/send-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, name, purpose })
+    });
+    return res;
+  },
+
+  // Alias
   sendOtp: async (email, name, purpose) => {
     return await authApi.sendOTP(email, name, purpose);
   },
 
-  // Verify OTP (supports both verifyOTP and verifyOtp)
+  /**
+   * Verify OTP code entered by user.
+   */
   verifyOTP: async (email, code) => {
-    try {
-      const cleanCode = String(code).trim();
-      const res = await fetch(`${API_BASE}/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: cleanCode })
-      });
-      return await res.json();
-    } catch (e) {
-      const cleanCode = String(code).trim();
-      if (cleanCode === "882194" || cleanCode === "123456" || cleanCode === "889000" || cleanCode.length === 6) {
-        return { success: true, message: "OTP verified successfully (Demo Mode)" };
-      }
-      return { success: false, error: "Verification error" };
-    }
+    const cleanCode = String(code).trim();
+    const res = await apiRequest("/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, code: cleanCode })
+    });
+    return res;
   },
 
+  // Alias
   verifyOtp: async (email, code) => {
     return await authApi.verifyOTP(email, code);
   },
 
-  // Register
+  /**
+   * Register a new user account.
+   */
   register: async (userData) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData)
-      });
-      return await res.json();
-    } catch (e) {
-      return {
-        success: true,
-        token: "demo_jwt_token_" + Date.now(),
-        user: {
-          id: "USER-" + Date.now(),
-          name: userData.name,
-          email: userData.email,
-          role: "member",
-          isVerified: true
-        }
-      };
-    }
+    const res = await apiRequest("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(userData)
+    });
+    return res;
   },
 
-  // Login (supports both login and loginUser)
+  /**
+   * Login with email and password.
+   */
   login: async (credentials, password) => {
-    const payload = typeof credentials === "string" ? { email: credentials, password } : credentials;
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      return await res.json();
-    } catch (e) {
-      return {
-        success: true,
-        token: "demo_jwt_token_" + Date.now(),
-        user: {
-          id: "USER-001",
-          name: "Member User",
-          email: payload.email,
-          role: "member",
-          isVerified: true
-        }
-      };
-    }
+    const payload = typeof credentials === "string"
+      ? { email: credentials, password }
+      : credentials;
+    const res = await apiRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    return res;
   },
 
+  // Alias
   loginUser: async (email, password) => {
     return await authApi.login({ email, password });
+  },
+
+  /**
+   * Reset password using email after OTP verification.
+   */
+  resetPassword: async (email, newPassword) => {
+    const res = await apiRequest("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, newPassword })
+    });
+    return res;
+  },
+
+  /**
+   * Get user by email or ID (admin lookup).
+   */
+  getUser: async (emailOrId) => {
+    try {
+      const data = await apiRequest("/users");
+      if (data.success && Array.isArray(data.users)) {
+        if (!emailOrId) return data;
+        const match = data.users.find(
+          (u) =>
+            u.email?.toLowerCase() === emailOrId.toLowerCase() ||
+            u._id === emailOrId ||
+            u.id === emailOrId
+        );
+        if (match) return { success: true, user: match };
+        return { success: false, error: "No user found with that email or ID." };
+      }
+      return data;
+    } catch (e) {
+      return { success: false, error: "Failed to connect to server." };
+    }
+  },
+
+  /**
+   * Update user role (admin).
+   */
+  updateUser: async (userId, fields) => {
+    try {
+      const { role } = fields;
+      const res = await apiRequest(`/users/${userId}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ role })
+      });
+      return res;
+    } catch (e) {
+      return { success: false, error: "Failed to update user." };
+    }
+  },
+
+  // Alias for generateOtp
+  generateOtp: async (email, name, purpose) => {
+    return await authApi.sendOTP(email, name, purpose);
+  },
+
+  /**
+   * Send custom email via backend — admin only.
+   */
+  sendMail: async (to, name, subject, body) => {
+    try {
+      const res = await apiRequest("/auth/send-mail", {
+        method: "POST",
+        body: JSON.stringify({ to, name, subject, body })
+      });
+      return res;
+    } catch (e) {
+      return { success: false, error: "Failed to send email." };
+    }
   }
 };

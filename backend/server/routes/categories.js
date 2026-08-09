@@ -1,9 +1,11 @@
 import express from "express";
 import Category from "../models/Category.js";
+import { protectJWT } from "./auth.js";
+import { adminOnly } from "../middleware/adminOnly.js";
 
 const router = express.Router();
 
-// GET all categories created by admin
+// GET all categories — Public read access
 router.get("/", async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
@@ -13,12 +15,12 @@ router.get("/", async (req, res) => {
   }
 });
 
-// CREATE or UPDATE category by admin
-router.post("/", async (req, res) => {
+// CREATE or UPDATE category — Admin only
+router.post("/", protectJWT, adminOnly, async (req, res) => {
   try {
     const { id, name, description, image, isFeatured, status } = req.body;
     if (!name) {
-      return res.status(400).json({ success: false, error: "Category name is required" });
+      return res.status(400).json({ success: false, error: "Category name is required." });
     }
 
     const catId = id || `CAT-${Math.floor(100 + Math.random() * 900)}`;
@@ -41,23 +43,28 @@ router.post("/", async (req, res) => {
   }
 });
 
-// UPDATE category status (ACTIVE / INACTIVE) by admin
-router.patch("/:id/status", async (req, res) => {
+// UPDATE category status — Admin only
+router.patch("/:id/status", protectJWT, adminOnly, async (req, res) => {
   try {
     const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({ success: false, error: "Status is required." });
+    }
+
     const category = await Category.findOneAndUpdate({ id: req.params.id }, { status }, { new: true });
-    if (!category) return res.status(404).json({ success: false, error: "Category not found" });
+    if (!category) return res.status(404).json({ success: false, error: "Category not found." });
     return res.json({ success: true, category });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// DELETE category by admin
-router.delete("/:id", async (req, res) => {
+// DELETE category — Admin only
+router.delete("/:id", protectJWT, adminOnly, async (req, res) => {
   try {
-    await Category.findOneAndDelete({ id: req.params.id });
-    return res.json({ success: true, message: "Category deleted from database" });
+    const category = await Category.findOneAndDelete({ id: req.params.id });
+    if (!category) return res.status(404).json({ success: false, error: "Category not found." });
+    return res.json({ success: true, message: "Category deleted successfully." });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }

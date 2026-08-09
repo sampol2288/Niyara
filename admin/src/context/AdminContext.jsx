@@ -3,59 +3,6 @@ import { adminApi } from "../api/adminApi";
 
 const AdminContext = createContext();
 
-const DEFAULT_CATEGORIES = [
-  {
-    id: "CAT-101",
-    name: "Outerwear",
-    slug: "outerwear",
-    description: "Tailored blazers, luxury wool coats, leather trenches",
-    image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop",
-    isFeatured: true,
-    status: "ACTIVE",
-    itemCount: 12
-  },
-  {
-    id: "CAT-102",
-    name: "Tops",
-    slug: "tops",
-    description: "Silk shirts, structured corsets, cashmere knits",
-    image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=600&auto=format&fit=crop",
-    isFeatured: true,
-    status: "ACTIVE",
-    itemCount: 18
-  },
-  {
-    id: "CAT-103",
-    name: "Bottoms",
-    slug: "bottoms",
-    description: "Wide-leg trousers, pleated skirts, denim jeans",
-    image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=600&auto=format&fit=crop",
-    isFeatured: false,
-    status: "ACTIVE",
-    itemCount: 15
-  },
-  {
-    id: "CAT-104",
-    name: "Footwear",
-    slug: "footwear",
-    description: "Archival boots, leather heels, minimalist loafers",
-    image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=600&auto=format&fit=crop",
-    isFeatured: true,
-    status: "ACTIVE",
-    itemCount: 9
-  },
-  {
-    id: "CAT-105",
-    name: "Accessories",
-    slug: "accessories",
-    description: "Leather handbags, statement belts, luxury eyewear",
-    image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=600&auto=format&fit=crop",
-    isFeatured: false,
-    status: "ACTIVE",
-    itemCount: 22
-  }
-];
-
 export const AdminProvider = ({ children }) => {
   const [theme, setTheme] = useState("dark");
 
@@ -146,41 +93,52 @@ export const AdminProvider = ({ children }) => {
     return { success: true, message: "PIN updated successfully" };
   };
 
-  const authenticateAdminWithEmail = (email, password) => {
+  const authenticateAdminWithEmail = async (email, password) => {
     if (lockoutTime > Date.now()) {
       const leftSec = Math.ceil((lockoutTime - Date.now()) / 1000);
       return { success: false, message: `Security Lockout active. Retry in ${leftSec}s` };
     }
 
-    if (
-      (email.trim().toLowerCase() === "admin@niyara.com" || email.trim().toLowerCase() === "admin@fashion.com") &&
-      password === "admin123"
-    ) {
-      const session = {
-        role: "Super Admin",
-        email: email.trim(),
-        authenticatedAt: new Date().toISOString()
-      };
-      setIsAdminAuthenticated(true);
-      setAdminSession(session);
-      localStorage.setItem("niyara_admin_authenticated", "true");
-      localStorage.setItem("niyara_admin_session", JSON.stringify(session));
-      setFailedAttempts(0);
-      logSecurityEvent("Admin Login Success", "INFO", `Authenticated via Email (${email})`);
-      showToast("Access Granted: Super Admin Credentials Verified");
-      return { success: true };
-    } else {
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      logSecurityEvent("Login Failed", "WARN", `Failed credentials attempt for ${email}`);
+    try {
+      // Call the real backend — no hardcoded credentials
+      const result = await adminApi.login(email.trim(), password);
 
-      if (newAttempts >= 3) {
-        const until = Date.now() + 60 * 1000;
-        setLockoutTime(until);
-        logSecurityEvent("Terminal Locked", "CRITICAL", "3 Consecutive failed login attempts triggered lockout");
-        return { success: false, message: "Maximum failed attempts reached. Terminal locked for 60s" };
+      if (result.success && result.user && result.user.role === "admin") {
+        const session = {
+          role: result.user.role,
+          name: result.user.name,
+          email: result.user.email,
+          authenticatedAt: new Date().toISOString()
+        };
+        setIsAdminAuthenticated(true);
+        setAdminSession(session);
+        localStorage.setItem("niyara_admin_authenticated", "true");
+        localStorage.setItem("niyara_admin_session", JSON.stringify(session));
+        localStorage.setItem("niyara_admin_jwt", result.token);
+        setFailedAttempts(0);
+        logSecurityEvent("Admin Login Success", "INFO", `Authenticated as ${result.user.name} (${result.user.email})`);
+        showToast(`Welcome back, ${result.user.name}!`, "success");
+        return { success: true };
+      } else if (result.success && result.user && result.user.role !== "admin") {
+        // User exists but is not admin
+        logSecurityEvent("Admin Login Unauthorized", "WARN", `Non-admin user attempted admin login: ${email}`);
+        return { success: false, message: "Access denied. Administrator privileges required." };
+      } else {
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        logSecurityEvent("Login Failed", "WARN", `Failed credentials attempt for ${email}`);
+
+        if (newAttempts >= 3) {
+          const until = Date.now() + 60 * 1000;
+          setLockoutTime(until);
+          logSecurityEvent("Terminal Locked", "CRITICAL", "3 Consecutive failed login attempts triggered lockout");
+          return { success: false, message: "Maximum failed attempts reached. Terminal locked for 60s" };
+        }
+        return { success: false, message: result.error || `Invalid email or password (${3 - newAttempts} attempts left)` };
       }
-      return { success: false, message: `Invalid email or password (${3 - newAttempts} attempts left)` };
+    } catch (err) {
+      console.error("[Admin Login Error]:", err);
+      return { success: false, message: "Unable to reach the authentication server. Please check your connection." };
     }
   };
 
@@ -222,9 +180,22 @@ export const AdminProvider = ({ children }) => {
   const lockAdminSession = () => {
     setIsAdminAuthenticated(false);
     localStorage.removeItem("niyara_admin_authenticated");
+    localStorage.removeItem("niyara_admin_jwt");
+    localStorage.removeItem("niyara_admin_session");
     logSecurityEvent("Session Locked", "INFO", "Admin manually locked the session");
     showToast("Terminal session locked");
   };
+
+  // Listen for unauthorized events from API (token expired)
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsAdminAuthenticated(false);
+      logSecurityEvent("Session Expired", "WARN", "Admin JWT token expired — re-authentication required");
+      showToast("Session expired. Please log in again.", "error");
+    };
+    window.addEventListener("niyara:admin:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("niyara:admin:unauthorized", handleUnauthorized);
+  }, []);
 
   // Real Data Stores
   const [products, setProducts] = useState([]);

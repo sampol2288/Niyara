@@ -1,21 +1,62 @@
+/**
+ * NIYARA Admin API Client
+ * All mutating requests include the JWT Bearer token from localStorage.
+ */
+
 const getApiBase = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window !== "undefined" && !window.location.hostname.includes("localhost") && !window.location.hostname.includes("127.0.0.1")) {
-    return "https://niyara.onrender.com/api";
+  let raw = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
+  if (!raw) return "http://localhost:5000/api";
+  if (!raw.endsWith("/api")) {
+    raw += "/api";
   }
-  return "http://localhost:5000/api";
+  return raw;
 };
 
 const API_BASE = getApiBase();
 
+/**
+ * Get stored admin JWT token
+ */
+const getAdminToken = () => {
+  return localStorage.getItem("niyara_admin_jwt") || null;
+};
+
+/**
+ * Build authenticated headers
+ */
+const authHeaders = () => {
+  const token = getAdminToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+};
+
+/**
+ * Helper: make a request and handle 401 by clearing auth state
+ */
+const apiRequest = async (endpoint, options = {}) => {
+  const res = await fetch(`${API_BASE}${endpoint}`, options);
+
+  if (res.status === 401 || res.status === 403) {
+    // Token expired or unauthorized — clear stored auth
+    localStorage.removeItem("niyara_admin_jwt");
+    localStorage.removeItem("niyara_admin_authenticated");
+    localStorage.removeItem("niyara_admin_session");
+    // Signal that re-authentication is needed
+    window.dispatchEvent(new CustomEvent("niyara:admin:unauthorized"));
+  }
+
+  return await res.json();
+};
+
 export const adminApi = {
-  // Health & Database status
+  // ─── Health & Auth ─────────────────────────────────────────────────────────
   getHealth: async () => {
     const res = await fetch(`${API_BASE}/health`);
     return await res.json();
   },
 
-  // Auth & OTP
   login: async (email, password) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
@@ -25,155 +66,150 @@ export const adminApi = {
     return await res.json();
   },
 
-  // Products
+  // ─── Products ──────────────────────────────────────────────────────────────
   getProducts: async () => {
     const res = await fetch(`${API_BASE}/products`);
     return await res.json();
   },
 
   saveProduct: async (productData) => {
-    const res = await fetch(`${API_BASE}/products`, {
+    return await apiRequest("/products", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(productData)
     });
-    return await res.json();
   },
 
   updateProduct: async (id, updateData) => {
-    const res = await fetch(`${API_BASE}/products/${id}`, {
+    return await apiRequest(`/products/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(updateData)
     });
-    return await res.json();
   },
 
   deleteProduct: async (id) => {
-    const res = await fetch(`${API_BASE}/products/${id}`, {
-      method: "DELETE"
+    return await apiRequest(`/products/${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
     });
-    return await res.json();
   },
 
-  // Orders
+  // ─── Orders ────────────────────────────────────────────────────────────────
   getOrders: async () => {
-    const res = await fetch(`${API_BASE}/orders`);
-    return await res.json();
+    return await apiRequest("/orders", {
+      headers: authHeaders()
+    });
   },
 
   updateOrderStatus: async (id, statusData) => {
-    const res = await fetch(`${API_BASE}/orders/${id}/status`, {
+    return await apiRequest(`/orders/${id}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(statusData)
     });
-    return await res.json();
   },
 
-  // Users / Customers
+  // ─── Users / Customers ─────────────────────────────────────────────────────
   getUsers: async () => {
-    const res = await fetch(`${API_BASE}/users`);
-    return await res.json();
+    return await apiRequest("/users", {
+      headers: authHeaders()
+    });
   },
 
   createUser: async (userData) => {
-    const res = await fetch(`${API_BASE}/users`, {
+    return await apiRequest("/users", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(userData)
     });
-    return await res.json();
   },
 
   updateUserRole: async (id, role) => {
-    const res = await fetch(`${API_BASE}/users/${id}/role`, {
+    return await apiRequest(`/users/${id}/role`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ role })
     });
-    return await res.json();
   },
 
   deleteUser: async (id) => {
-    const res = await fetch(`${API_BASE}/users/${id}`, {
-      method: "DELETE"
+    return await apiRequest(`/users/${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
     });
-    return await res.json();
   },
 
-  // Discounts
+  // ─── Discounts ─────────────────────────────────────────────────────────────
   getDiscounts: async () => {
-    const res = await fetch(`${API_BASE}/discounts`);
-    return await res.json();
+    return await apiRequest("/discounts", {
+      headers: authHeaders()
+    });
   },
 
   createDiscount: async (discountData) => {
-    const res = await fetch(`${API_BASE}/discounts`, {
+    return await apiRequest("/discounts", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(discountData)
     });
-    return await res.json();
   },
 
   deleteDiscount: async (id) => {
-    const res = await fetch(`${API_BASE}/discounts/${id}`, {
-      method: "DELETE"
+    return await apiRequest(`/discounts/${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
     });
-    return await res.json();
   },
 
-  // Reviews
+  // ─── Reviews ───────────────────────────────────────────────────────────────
   getReviews: async () => {
-    const res = await fetch(`${API_BASE}/reviews`);
-    return await res.json();
+    return await apiRequest("/reviews/all", {
+      headers: authHeaders()
+    });
   },
 
   updateReviewStatus: async (id, status) => {
-    const res = await fetch(`${API_BASE}/reviews/${id}/status`, {
+    return await apiRequest(`/reviews/${id}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ status })
     });
-    return await res.json();
   },
 
   deleteReview: async (id) => {
-    const res = await fetch(`${API_BASE}/reviews/${id}`, {
-      method: "DELETE"
+    return await apiRequest(`/reviews/${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
     });
-    return await res.json();
   },
 
-  // Categories
+  // ─── Categories ────────────────────────────────────────────────────────────
   getCategories: async () => {
     const res = await fetch(`${API_BASE}/categories`);
     return await res.json();
   },
 
   saveCategory: async (categoryData) => {
-    const res = await fetch(`${API_BASE}/categories`, {
+    return await apiRequest("/categories", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(categoryData)
     });
-    return await res.json();
   },
 
   updateCategoryStatus: async (id, status) => {
-    const res = await fetch(`${API_BASE}/categories/${id}/status`, {
+    return await apiRequest(`/categories/${id}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ status })
     });
-    return await res.json();
   },
 
   deleteCategory: async (id) => {
-    const res = await fetch(`${API_BASE}/categories/${id}`, {
-      method: "DELETE"
+    return await apiRequest(`/categories/${id}`, {
+      method: "DELETE",
+      headers: authHeaders()
     });
-    return await res.json();
   }
 };
