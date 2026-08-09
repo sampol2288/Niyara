@@ -39,7 +39,7 @@ export const AdminAuthGate = () => {
     return () => clearInterval(interval);
   }, [lockoutTime]);
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
 
@@ -53,7 +53,7 @@ export const AdminAuthGate = () => {
         setErrorMessage("Please enter both email address and password");
         return;
       }
-      const res = authenticateAdminWithEmail(emailInput, passwordInput);
+      const res = await authenticateAdminWithEmail(emailInput, passwordInput);
       if (!res.success) {
         setErrorMessage(res.message);
       }

@@ -154,8 +154,98 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // ---- CATEGORIES, ORDERS, USERS, DISCOUNTS, REVIEWS FROM MONGODB ----
+  const [categories, setCategories] = useState([]);
+  const [discounts, setDiscounts] = useState([]);
+  const [reviews, setReviews] = useState([]);
+
+  const fetchCategories = async () => {
+    try {
+      const API_BASE = getApiBaseUrl();
+      const res = await fetch(`${API_BASE}/categories`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.categories)) {
+        setCategories(data.categories);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch categories from MongoDB:", e);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const API_BASE = getApiBaseUrl();
+      const headers = { "Content-Type": "application/json" };
+      const token = jwtToken || localStorage.getItem("niyara_jwt_token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`${API_BASE}/orders`, { headers });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.orders)) {
+        setOrders(data.orders);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch orders from MongoDB:", e);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const API_BASE = getApiBaseUrl();
+      const headers = { "Content-Type": "application/json" };
+      const token = jwtToken || localStorage.getItem("niyara_jwt_token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`${API_BASE}/users`, { headers });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.users)) {
+        updateRegisteredUsers(data.users);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch users from MongoDB:", e);
+    }
+  };
+
+  const fetchDiscounts = async () => {
+    try {
+      const API_BASE = getApiBaseUrl();
+      const headers = { "Content-Type": "application/json" };
+      const token = jwtToken || localStorage.getItem("niyara_jwt_token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`${API_BASE}/discounts`, { headers });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.discounts)) {
+        setDiscounts(data.discounts);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch discounts from MongoDB:", e);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      const API_BASE = getApiBaseUrl();
+      const res = await fetch(`${API_BASE}/reviews`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.reviews)) {
+        setReviews(data.reviews);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch reviews from MongoDB:", e);
+    }
+  };
+
+  const refreshAllAdminData = async () => {
+    await Promise.all([
+      fetchProducts(),
+      fetchCategories(),
+      fetchOrders(),
+      fetchUsers(),
+      fetchDiscounts(),
+      fetchReviews()
+    ]);
+  };
+
   useEffect(() => {
-    fetchProducts();
+    refreshAllAdminData();
   }, []);
 
   useEffect(() => {
@@ -697,8 +787,8 @@ export const AppProvider = ({ children }) => {
     showToast("Security audit log purged.");
   };
 
-  // Primary Email & Password Admin Authentication
-  const authenticateAdminWithEmail = (email, password) => {
+  // Primary Email & Password Admin Authentication (queries MongoDB Atlas first)
+  const authenticateAdminWithEmail = async (email, password) => {
     if (lockoutTime > Date.now()) {
       const remainingSecs = Math.ceil((lockoutTime - Date.now()) / 1000);
       showToast(`Terminal Locked. Try again in ${remainingSecs}s`);
@@ -706,6 +796,39 @@ export const AppProvider = ({ children }) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+
+    try {
+      const result = await authApi.login(cleanEmail, password);
+      if (result.success && result.user) {
+        if (result.user.role === "admin") {
+          setIsAdminAuthenticated(true);
+          setFailedPinAttempts(0);
+          setAdminSession({
+            role: "Super Admin",
+            user: result.user.name,
+            email: result.user.email,
+            ip: "127.0.0.1 (TLS 1.3)",
+            authenticatedAt: new Date().toLocaleTimeString()
+          });
+          setUser(result.user, result.token);
+          logSecurityEvent(
+            "ADMIN_EMAIL_LOGIN_SUCCESS",
+            "INFO",
+            `Authenticated via MongoDB as ${result.user.name} (${result.user.email})`,
+            result.user.name,
+            "Super Admin"
+          );
+          showToast(`Welcome back, ${result.user.name}! Admin session unlocked.`);
+          refreshAllAdminData();
+          return { success: true, message: "Access Granted" };
+        } else {
+          return { success: false, message: "Access denied. Administrator privileges required." };
+        }
+      }
+    } catch (err) {
+      console.warn("MongoDB API auth call error, attempting local fallback...");
+    }
+
     const account = adminAccounts.find(
       (acc) => acc.email.toLowerCase() === cleanEmail && acc.password === password
     );
@@ -717,7 +840,7 @@ export const AppProvider = ({ children }) => {
         role: account.role,
         user: account.name,
         email: account.email,
-        ip: "192.168.1.104 (TLS 1.3)",
+        ip: "127.0.0.1 (TLS 1.3)",
         authenticatedAt: new Date().toLocaleTimeString()
       });
 
@@ -729,6 +852,7 @@ export const AppProvider = ({ children }) => {
         account.role
       );
       showToast(`Welcome back, ${account.name}! Admin session unlocked.`);
+      refreshAllAdminData();
       return { success: true, message: "Access Granted" };
     } else {
       const newFailCount = failedPinAttempts + 1;
@@ -888,7 +1012,16 @@ export const AppProvider = ({ children }) => {
         toast,
         showToast,
 
-        // Security API
+        // Security API & MongoDB Data Fetchers
+        categories,
+        discounts,
+        reviews,
+        fetchCategories,
+        fetchOrders,
+        fetchUsers,
+        fetchDiscounts,
+        fetchReviews,
+        refreshAllAdminData,
         isAdminAuthenticated,
         adminSession,
         adminAccounts,
