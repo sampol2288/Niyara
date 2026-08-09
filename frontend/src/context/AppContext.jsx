@@ -99,9 +99,23 @@ export const AppProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const getApiBaseUrl = () => {
+    let raw = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
+    if (!raw) {
+      if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        return "https://niyara.onrender.com/api";
+      }
+      return "http://localhost:5000/api";
+    }
+    if (!raw.endsWith("/api")) {
+      raw += "/api";
+    }
+    return raw;
+  };
+
   const fetchProducts = async () => {
     setIsLoading(true);
-    const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const API_BASE = getApiBaseUrl();
     try {
       const res = await fetch(`${API_BASE}/products`);
       const data = await res.json();
@@ -456,7 +470,7 @@ export const AppProvider = ({ children }) => {
     updateOrders(updated);
 
     // Save to MongoDB Database
-    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const apiBase = getApiBaseUrl();
     fetch(`${apiBase}/orders/${orderId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -573,7 +587,7 @@ export const AppProvider = ({ children }) => {
     updateOrders(updated);
 
     // Save to MongoDB Database
-    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const apiBase = getApiBaseUrl();
     const headers = { "Content-Type": "application/json" };
     if (jwtToken) {
       headers["Authorization"] = `Bearer ${jwtToken}`;
