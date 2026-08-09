@@ -18,35 +18,10 @@ export const AdminAuthGate = () => {
   const [twoFactorCode, setTwoFactorCode] = useState("");
 
   const [errorMessage, setErrorMessage] = useState("");
-  const [remainingLockout, setRemainingLockout] = useState(0);
-
-  useEffect(() => {
-    let interval;
-    if (lockoutTime > Date.now()) {
-      setRemainingLockout(Math.ceil((lockoutTime - Date.now()) / 1000));
-      interval = setInterval(() => {
-        const left = Math.ceil((lockoutTime - Date.now()) / 1000);
-        if (left <= 0) {
-          setRemainingLockout(0);
-          clearInterval(interval);
-        } else {
-          setRemainingLockout(left);
-        }
-      }, 1000);
-    } else {
-      setRemainingLockout(0);
-    }
-    return () => clearInterval(interval);
-  }, [lockoutTime]);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
-
-    if (remainingLockout > 0) {
-      setErrorMessage(`Terminal locked. Please wait ${remainingLockout}s`);
-      return;
-    }
 
     if (authMode === "email") {
       if (!emailInput || !passwordInput) {
@@ -209,30 +184,6 @@ export const AdminAuthGate = () => {
             AUTHENTICATE TO UNLOCK OPERATIONAL TERMINAL
           </p>
         </div>
-
-        {/* Lockout Warning Banner */}
-        {remainingLockout > 0 && (
-          <div
-            style={{
-              background: "rgba(239, 68, 68, 0.15)",
-              border: "1px solid #ef4444",
-              borderRadius: "6px",
-              padding: "0.75rem 1rem",
-              marginBottom: "1.5rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-              color: "#ef4444",
-              fontSize: "0.8rem"
-            }}
-          >
-            <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-            <div>
-              <span style={{ fontWeight: 600, display: "block" }}>TERMINAL LOCKED</span>
-              <span>Too many invalid attempts. Try again in {remainingLockout} seconds.</span>
-            </div>
-          </div>
-        )}
 
         {/* Authentication Method Selector Tabs */}
         <div style={{ display: "flex", gap: "0.5rem", borderBottom: isLight ? "1px solid #e4e4e7" : "1px solid rgba(255,255,255,0.1)", marginBottom: "1.5rem", paddingBottom: "0.5rem" }}>

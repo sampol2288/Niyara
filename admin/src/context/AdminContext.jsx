@@ -94,11 +94,6 @@ export const AdminProvider = ({ children }) => {
   };
 
   const authenticateAdminWithEmail = async (email, password) => {
-    if (lockoutTime > Date.now()) {
-      const leftSec = Math.ceil((lockoutTime - Date.now()) / 1000);
-      return { success: false, message: `Security Lockout active. Retry in ${leftSec}s` };
-    }
-
     try {
       // Call the real backend — no hardcoded credentials
       const result = await adminApi.login(email.trim(), password);
@@ -124,17 +119,8 @@ export const AdminProvider = ({ children }) => {
         logSecurityEvent("Admin Login Unauthorized", "WARN", `Non-admin user attempted admin login: ${email}`);
         return { success: false, message: "Access denied. Administrator privileges required." };
       } else {
-        const newAttempts = failedAttempts + 1;
-        setFailedAttempts(newAttempts);
         logSecurityEvent("Login Failed", "WARN", `Failed credentials attempt for ${email}`);
-
-        if (newAttempts >= 3) {
-          const until = Date.now() + 60 * 1000;
-          setLockoutTime(until);
-          logSecurityEvent("Terminal Locked", "CRITICAL", "3 Consecutive failed login attempts triggered lockout");
-          return { success: false, message: "Maximum failed attempts reached. Terminal locked for 60s" };
-        }
-        return { success: false, message: result.error || `Invalid email or password (${3 - newAttempts} attempts left)` };
+        return { success: false, message: result.error || "Invalid email or password" };
       }
     } catch (err) {
       console.error("[Admin Login Error]:", err);
@@ -143,11 +129,6 @@ export const AdminProvider = ({ children }) => {
   };
 
   const authenticateAdmin = (pin, role = "Super Admin") => {
-    if (lockoutTime > Date.now()) {
-      const leftSec = Math.ceil((lockoutTime - Date.now()) / 1000);
-      return { success: false, message: `Security Lockout active. Retry in ${leftSec}s` };
-    }
-
     if (pin === adminPin || pin === "8890") {
       const session = {
         role: role || "Super Admin",
@@ -163,17 +144,8 @@ export const AdminProvider = ({ children }) => {
       showToast(`Welcome back, ${role}`);
       return { success: true };
     } else {
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
       logSecurityEvent("PIN Auth Failed", "WARN", "Incorrect PIN entered");
-
-      if (newAttempts >= 3) {
-        const until = Date.now() + 60 * 1000;
-        setLockoutTime(until);
-        logSecurityEvent("Terminal Locked", "CRITICAL", "3 Consecutive failed PIN attempts");
-        return { success: false, message: "Terminal locked for 60 seconds due to invalid PIN" };
-      }
-      return { success: false, message: `Invalid PIN code (${3 - newAttempts} attempts left)` };
+      return { success: false, message: "Invalid PIN code." };
     }
   };
 

@@ -789,12 +789,6 @@ export const AppProvider = ({ children }) => {
 
   // Primary Email & Password Admin Authentication (queries MongoDB Atlas first)
   const authenticateAdminWithEmail = async (email, password) => {
-    if (lockoutTime > Date.now()) {
-      const remainingSecs = Math.ceil((lockoutTime - Date.now()) / 1000);
-      showToast(`Terminal Locked. Try again in ${remainingSecs}s`);
-      return { success: false, message: `System locked due to security policy. Retry in ${remainingSecs}s` };
-    }
-
     const cleanEmail = email.trim().toLowerCase();
 
     try {
@@ -871,45 +865,18 @@ export const AppProvider = ({ children }) => {
       refreshAllAdminData();
       return { success: true, message: "Access Granted" };
     } else {
-      const newFailCount = failedPinAttempts + 1;
-      setFailedPinAttempts(newFailCount);
-
-      if (newFailCount >= 3) {
-        const lockUntil = Date.now() + 30000;
-        setLockoutTime(lockUntil);
-        logSecurityEvent(
-          "BRUTE_FORCE_LOCKOUT_TRIGGERED",
-          "CRITICAL",
-          `3 consecutive failed email login attempts for ${email}. Lockout enforced for 30s.`
-        );
-        showToast("⚠️ 3 Failed login attempts! Terminal locked for 30 seconds.");
-        return { success: false, message: "Too many failed attempts. Locked for 30s." };
-      } else {
-        logSecurityEvent(
-          "ADMIN_EMAIL_LOGIN_FAILED",
-          "WARN",
-          `Invalid email/password attempt for ${email} (${newFailCount}/3 attempts)`
-        );
-        showToast(`Invalid email or password (${3 - newFailCount} attempts remaining)`);
-        return { success: false, message: `Invalid email or password. ${3 - newFailCount} attempts remaining.` };
-      }
+      logSecurityEvent("ADMIN_EMAIL_LOGIN_FAILED", "WARN", `Invalid email/password attempt for ${email}`);
+      showToast("Invalid email address or password.");
+      return { success: false, message: "Invalid email address or password." };
     }
   };
 
   const authenticateAdmin = (enteredPin, selectedRole = "Super Admin") => {
-    // Check for lockout
-    if (lockoutTime > Date.now()) {
-      const remainingSecs = Math.ceil((lockoutTime - Date.now()) / 1000);
-      showToast(`Security Lockout Active. Try again in ${remainingSecs}s`);
-      return { success: false, message: `System locked. Retry in ${remainingSecs}s` };
-    }
-
     if (enteredPin === adminPin || enteredPin === "admin123") {
       const operatorName = selectedRole === "Super Admin" ? "Julian Vanderveld" : selectedRole === "Senior Manager" ? "Elena Rostova" : "Marcus Vance";
       const operatorEmail = selectedRole === "Super Admin" ? "admin@NIYARA.com" : selectedRole === "Senior Manager" ? "elena.r@NIYARA.com" : "marcus.v@NIYARA.com";
 
       setIsAdminAuthenticated(true);
-      setFailedPinAttempts(0);
       setAdminSession({
         role: selectedRole,
         user: operatorName,
@@ -941,28 +908,9 @@ export const AppProvider = ({ children }) => {
       refreshAllAdminData();
       return { success: true, message: "Access Granted" };
     } else {
-      const newFailCount = failedPinAttempts + 1;
-      setFailedPinAttempts(newFailCount);
-
-      if (newFailCount >= 3) {
-        const lockUntil = Date.now() + 30000;
-        setLockoutTime(lockUntil);
-        logSecurityEvent(
-          "BRUTE_FORCE_LOCKOUT_TRIGGERED",
-          "CRITICAL",
-          `3 consecutive failed passcode attempts. Lockout enforced for 30s.`
-        );
-        showToast("⚠️ 3 Failed attempts! Terminal locked for 30 seconds.");
-        return { success: false, message: "Too many failed attempts. Locked for 30s." };
-      } else {
-        logSecurityEvent(
-          "ADMIN_LOGIN_FAILED",
-          "WARN",
-          `Invalid security PIN entry (${newFailCount}/3 attempts)`
-        );
-        showToast(`Invalid Security PIN (${3 - newFailCount} attempts remaining)`);
-        return { success: false, message: `Invalid PIN. ${3 - newFailCount} attempts remaining.` };
-      }
+      logSecurityEvent("ADMIN_PIN_FAILED", "WARN", `Invalid PIN entry: ${enteredPin}`);
+      showToast("Invalid security PIN.");
+      return { success: false, message: "Invalid security PIN." };
     }
   };
 

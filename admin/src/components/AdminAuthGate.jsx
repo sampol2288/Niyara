@@ -13,26 +13,6 @@ export const AdminAuthGate = () => {
   const [pinInput, setPinInput] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [remainingLockout, setRemainingLockout] = useState(0);
-
-  useEffect(() => {
-    let interval;
-    if (lockoutTime > Date.now()) {
-      setRemainingLockout(Math.ceil((lockoutTime - Date.now()) / 1000));
-      interval = setInterval(() => {
-        const left = Math.ceil((lockoutTime - Date.now()) / 1000);
-        if (left <= 0) {
-          setRemainingLockout(0);
-          clearInterval(interval);
-        } else {
-          setRemainingLockout(left);
-        }
-      }, 1000);
-    } else {
-      setRemainingLockout(0);
-    }
-    return () => clearInterval(interval);
-  }, [lockoutTime]);
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
