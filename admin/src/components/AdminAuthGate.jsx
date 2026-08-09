@@ -18,11 +18,6 @@ export const AdminAuthGate = () => {
     e.preventDefault();
     setErrorMessage("");
 
-    if (remainingLockout > 0) {
-      setErrorMessage(`Terminal locked. Please wait ${remainingLockout}s`);
-      return;
-    }
-
     if (authMode === "email") {
       if (!emailInput || !passwordInput) {
         setErrorMessage("Please enter both email address and password");
@@ -235,27 +230,7 @@ export const AdminAuthGate = () => {
           </button>
         </div>
 
-        {remainingLockout > 0 && (
-          <div
-            style={{
-              padding: "0.85rem",
-              borderRadius: "0.5rem",
-              background: "rgba(239, 68, 68, 0.15)",
-              border: "1px solid rgba(239, 68, 68, 0.4)",
-              color: "#ef4444",
-              marginBottom: "1.25rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.6rem",
-              fontSize: "0.85rem"
-            }}
-          >
-            <AlertTriangle size={18} />
-            <span>Terminal Locked: Wait {remainingLockout} seconds to retry.</span>
-          </div>
-        )}
-
-        {errorMessage && remainingLockout === 0 && (
+        {errorMessage && (
           <div
             style={{
               padding: "0.75rem 1rem",
@@ -439,12 +414,10 @@ export const AdminAuthGate = () => {
           <button
             type="submit"
             className="btn-gold"
-            disabled={remainingLockout > 0}
             style={{
               width: "100%",
               marginTop: "1.5rem",
-              justifyContent: "center",
-              opacity: remainingLockout > 0 ? 0.5 : 1
+              justifyContent: "center"
             }}
           >
             <Lock size={16} /> UNLOCK ADMIN PORTAL

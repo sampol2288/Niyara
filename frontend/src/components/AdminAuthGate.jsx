@@ -273,7 +273,6 @@ export const AdminAuthGate = () => {
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     placeholder="admin@NIYARA.com"
-                    disabled={remainingLockout > 0}
                     style={{
                       width: "100%",
                       background: isLight ? "#f4f4f5" : "#0a0908",
@@ -311,7 +310,6 @@ export const AdminAuthGate = () => {
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
                     placeholder="••••••••••••"
-                    disabled={remainingLockout > 0}
                     style={{
                       width: "100%",
                       background: isLight ? "#f4f4f5" : "#0a0908",
@@ -393,7 +391,6 @@ export const AdminAuthGate = () => {
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
                   placeholder="Enter Security PIN"
-                  disabled={remainingLockout > 0}
                   style={{
                     width: "100%",
                     background: isLight ? "#f4f4f5" : "#0a0908",
@@ -415,7 +412,6 @@ export const AdminAuthGate = () => {
                   <button
                     key={num}
                     type="button"
-                    disabled={remainingLockout > 0}
                     onClick={() => handleNumpadClick(num.toString())}
                     style={{
                       background: isLight ? "#f4f4f5" : "rgba(255,255,255,0.05)",
@@ -433,7 +429,6 @@ export const AdminAuthGate = () => {
                 ))}
                 <button
                   type="button"
-                  disabled={remainingLockout > 0}
                   onClick={() => setPinInput("")}
                   style={{
                     background: "rgba(239, 68, 68, 0.1)",
@@ -450,7 +445,6 @@ export const AdminAuthGate = () => {
                 </button>
                 <button
                   type="button"
-                  disabled={remainingLockout > 0}
                   onClick={() => handleNumpadClick("0")}
                   style={{
                     background: isLight ? "#f4f4f5" : "rgba(255,255,255,0.05)",
@@ -467,7 +461,6 @@ export const AdminAuthGate = () => {
                 </button>
                 <button
                   type="button"
-                  disabled={remainingLockout > 0}
                   onClick={() => setPinInput("8890")}
                   style={{
                     background: "rgba(197, 160, 114, 0.15)",
@@ -519,10 +512,9 @@ export const AdminAuthGate = () => {
 
           <button
             type="submit"
-            disabled={remainingLockout > 0}
             style={{
               width: "100%",
-              background: remainingLockout > 0 ? "rgba(255,255,255,0.1)" : "#c5a072",
+              background: "#c5a072",
               color: "#ffffff",
               border: "none",
               padding: "0.85rem",
@@ -531,7 +523,7 @@ export const AdminAuthGate = () => {
               fontWeight: 700,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              cursor: remainingLockout > 0 ? "not-allowed" : "pointer",
+              cursor: "pointer",
               transition: "opacity 0.2s",
               display: "flex",
               alignItems: "center",
