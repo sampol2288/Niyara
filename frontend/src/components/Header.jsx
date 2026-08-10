@@ -188,20 +188,6 @@ export const Header = () => {
             Journal
           </button>
           <button
-            onClick={() => setView("auth")}
-            style={{
-              background: "none",
-              border: "none",
-              color: view === "auth" ? "var(--accent-camel)" : "var(--text-primary)",
-              fontSize: "0.75rem",
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              cursor: "pointer"
-            }}
-          >
-            Auth Pages
-          </button>
-          <button
             onClick={() => handleNavClick("Sale")}
             style={{
               background: "none",
