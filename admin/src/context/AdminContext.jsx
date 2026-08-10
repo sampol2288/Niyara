@@ -126,38 +126,6 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
-  const authenticateAdmin = async (pin, role = "Super Admin") => {
-    if (pin === adminPin) {
-      const session = {
-        role: role || "Super Admin",
-        email: "admin@NIYARA.com",
-        authenticatedAt: new Date().toISOString()
-      };
-      setIsAdminAuthenticated(true);
-      setAdminSession(session);
-      localStorage.setItem("niyara_admin_authenticated", "true");
-      localStorage.setItem("niyara_admin_session", JSON.stringify(session));
-
-      // Attempt to retrieve a real JWT token from backend for admin operations
-      try {
-        const loginRes = await adminApi.login("admin@NIYARA.com", "admin123");
-        if (loginRes && loginRes.success && loginRes.token) {
-          localStorage.setItem("niyara_admin_jwt", loginRes.token);
-        }
-      } catch (e) {
-        console.warn("[Admin PIN Auth]: Could not fetch backend JWT token", e);
-      }
-
-      setFailedAttempts(0);
-      logSecurityEvent("Admin Auth PIN Success", "INFO", `Authenticated as ${role}`);
-      showToast(`Welcome back, ${role}`, "success");
-      return { success: true };
-    } else {
-      logSecurityEvent("PIN Auth Failed", "WARN", "Incorrect PIN entered");
-      return { success: false, message: "Invalid PIN code." };
-    }
-  };
-
   const lockAdminSession = () => {
     setIsAdminAuthenticated(false);
     localStorage.removeItem("niyara_admin_authenticated");
@@ -293,7 +261,6 @@ export const AdminProvider = ({ children }) => {
         clearAuditLogs,
         updateAdminPinCode,
         authenticateAdminWithEmail,
-        authenticateAdmin,
         lockAdminSession,
         logSecurityEvent,
         products,

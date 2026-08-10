@@ -160,7 +160,7 @@ export const AdminAuthGate = () => {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
+            gridTemplateColumns: "1fr",
             gap: "0.25rem",
             background: "var(--bg-secondary)",
             padding: "0.25rem",
@@ -175,9 +175,9 @@ export const AdminAuthGate = () => {
               padding: "0.6rem",
               borderRadius: "0.375rem",
               border: "none",
-              background: authMode === "email" ? "var(--bg-elevated)" : "transparent",
-              color: authMode === "email" ? "var(--accent-gold)" : "var(--text-muted)",
-              fontWeight: authMode === "email" ? 700 : 500,
+              background: "var(--bg-elevated)",
+              color: "var(--accent-gold)",
+              fontWeight: 700,
               fontSize: "0.8rem",
               cursor: "pointer",
               display: "flex",
@@ -186,47 +186,7 @@ export const AdminAuthGate = () => {
               gap: "0.35rem"
             }}
           >
-            <Mail size={14} /> Email
-          </button>
-          <button
-            type="button"
-            onClick={() => { setAuthMode("pin"); setErrorMessage(""); }}
-            style={{
-              padding: "0.6rem",
-              borderRadius: "0.375rem",
-              border: "none",
-              background: authMode === "pin" ? "var(--bg-elevated)" : "transparent",
-              color: authMode === "pin" ? "var(--accent-gold)" : "var(--text-muted)",
-              fontWeight: authMode === "pin" ? 700 : 500,
-              fontSize: "0.8rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.35rem"
-            }}
-          >
-            <KeyRound size={14} /> PIN Pass
-          </button>
-          <button
-            type="button"
-            onClick={() => { setAuthMode("2fa"); setErrorMessage(""); }}
-            style={{
-              padding: "0.6rem",
-              borderRadius: "0.375rem",
-              border: "none",
-              background: authMode === "2fa" ? "var(--bg-elevated)" : "transparent",
-              color: authMode === "2fa" ? "var(--accent-gold)" : "var(--text-muted)",
-              fontWeight: authMode === "2fa" ? 700 : 500,
-              fontSize: "0.8rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.35rem"
-            }}
-          >
-            <Lock size={14} /> 2FA
+            <Mail size={14} /> Email Authentication
           </button>
         </div>
 
@@ -248,168 +208,73 @@ export const AdminAuthGate = () => {
         )}
 
         <form onSubmit={handleLoginSubmit}>
-          {authMode === "email" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.35rem" }}>
-                  ADMIN EMAIL
-                </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.35rem" }}>
+                ADMIN EMAIL
+              </label>
+              <input
+                type="email"
+                className="admin-input"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="admin@NIYARA.com"
+                required
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.35rem" }}>
+                ADMIN PASSWORD
+              </label>
+              <div style={{ position: "relative" }}>
                 <input
-                  type="email"
+                  type={showPassword ? "text" : "password"}
                   className="admin-input"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="admin@NIYARA.com"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="••••••••"
                   required
                 />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.35rem" }}>
-                  ADMIN PASSWORD
-                </label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    className="admin-input"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: "absolute",
-                      right: "0.75rem",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      cursor: "pointer"
-                    }}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
                 <button
                   type="button"
-                  onClick={handleFillDemoCredentials}
+                  onClick={() => setShowPassword(!showPassword)}
                   style={{
+                    position: "absolute",
+                    right: "0.75rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
                     background: "none",
                     border: "none",
-                    color: "var(--accent-gold)",
-                    fontSize: "0.75rem",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.25rem"
+                    color: "var(--text-muted)",
+                    cursor: "pointer"
                   }}
                 >
-                  <Sparkles size={12} /> Auto-fill Demo Credentials
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
-          )}
 
-          {authMode === "pin" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.35rem" }}>
-                  AUTHORIZATION TIER
-                </label>
-                <select
-                  className="admin-input"
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                >
-                  <option value="Super Admin">Super Admin (Full Root Access)</option>
-                  <option value="Inventory Manager">Inventory Manager</option>
-                  <option value="Order Operations">Order Operations</option>
-                  <option value="Auditor">Security Auditor</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
-                  ENTER 4-6 DIGIT MASTER PIN
-                </label>
-                <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginBottom: "1rem" }}>
-                  {[0, 1, 2, 3].map((idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        width: "42px",
-                        height: "48px",
-                        borderRadius: "0.5rem",
-                        background: "var(--bg-secondary)",
-                        border: pinInput.length > idx ? "1px solid var(--accent-gold)" : "1px solid var(--border-color)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "1.25rem",
-                        fontWeight: 700,
-                        color: "var(--accent-gold)"
-                      }}
-                    >
-                      {pinInput[idx] ? "•" : ""}
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
-                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "←"].map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => {
-                        if (key === "C") setPinInput("");
-                        else if (key === "←") setPinInput((prev) => prev.slice(0, -1));
-                        else handleNumpadClick(key);
-                      }}
-                      style={{
-                        padding: "0.75rem",
-                        borderRadius: "0.5rem",
-                        border: "1px solid var(--border-color)",
-                        background: "var(--bg-elevated)",
-                        color: "var(--text-primary)",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        fontSize: "1rem"
-                      }}
-                    >
-                      {key}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
+              <button
+                type="button"
+                onClick={handleFillDemoCredentials}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--accent-gold)",
+                  fontSize: "0.75rem",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem"
+                }}
+              >
+                <Sparkles size={12} /> Auto-fill Demo Credentials
+              </button>
             </div>
-          )}
-
-          {authMode === "2fa" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                Enter the 6-digit verification code from your Authenticator app (or enter <strong>8890</strong> for demo mode).
-              </p>
-              <div>
-                <input
-                  type="text"
-                  className="admin-input"
-                  style={{ textAlign: "center", letterSpacing: "0.3em", fontSize: "1.25rem", fontWeight: 700 }}
-                  maxLength={6}
-                  value={twoFactorCode}
-                  onChange={(e) => setTwoFactorCode(e.target.value)}
-                  placeholder="889000"
-                />
-              </div>
-            </div>
-          )}
+          </div>
 
           <button
             type="submit"

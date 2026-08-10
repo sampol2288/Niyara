@@ -769,7 +769,6 @@ export const AppProvider = ({ children }) => {
     showToast("Security audit log purged.");
   };
 
-  // Primary Email & Password Admin Authentication (queries MongoDB Atlas first)
   const authenticateAdminWithEmail = async (email, password) => {
     const cleanEmail = email.trim().toLowerCase();
 
@@ -802,55 +801,16 @@ export const AppProvider = ({ children }) => {
           refreshAllAdminData();
           return { success: true, message: "Access Granted" };
         } else {
+          logSecurityEvent("ADMIN_EMAIL_LOGIN_FAILED", "WARN", `Non-admin attempted login: ${email}`);
           return { success: false, message: "Access denied. Administrator privileges required." };
         }
+      } else {
+        logSecurityEvent("ADMIN_EMAIL_LOGIN_FAILED", "WARN", `Invalid email/password attempt for ${email}`);
+        return { success: false, message: result.error || "Invalid email address or password." };
       }
     } catch (err) {
-      console.warn("MongoDB API auth call error, attempting local fallback...");
-    }
-
-    // Local fallback: only match by email for display name — never compare passwords client-side
-    const account = adminAccounts.find(
-      (acc) => acc.email.toLowerCase() === cleanEmail
-    );
-
-    if (account) {
-      setIsAdminAuthenticated(true);
-      setFailedPinAttempts(0);
-      setAdminSession({
-        role: account.role,
-        user: account.name,
-        email: account.email,
-        ip: "127.0.0.1 (TLS 1.3)",
-        authenticatedAt: new Date().toLocaleTimeString()
-      });
-
-      const fallbackToken = createMockJWTToken({
-        _id: "admin-master-id",
-        name: account.name,
-        email: account.email,
-        role: "admin"
-      });
-      if (typeof window !== "undefined") {
-        localStorage.setItem("niyara_admin_jwt", fallbackToken);
-        localStorage.setItem("niyara_jwt_token", fallbackToken);
-      }
-      setJwtToken(fallbackToken);
-
-      logSecurityEvent(
-        "ADMIN_EMAIL_LOGIN_SUCCESS",
-        "INFO",
-        `Authenticated as ${account.name} (${account.role}) via Email (${account.email})`,
-        account.name,
-        account.role
-      );
-      showToast(`Welcome back, ${account.name}! Admin session unlocked.`);
-      refreshAllAdminData();
-      return { success: true, message: "Access Granted" };
-    } else {
-      logSecurityEvent("ADMIN_EMAIL_LOGIN_FAILED", "WARN", `Invalid email/password attempt for ${email}`);
-      showToast("Invalid email address or password.");
-      return { success: false, message: "Invalid email address or password." };
+      console.warn("MongoDB API auth call error:", err);
+      return { success: false, message: "Unable to reach the authentication server. Please check your connection." };
     }
   };
 
