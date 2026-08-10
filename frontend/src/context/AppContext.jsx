@@ -814,49 +814,6 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const authenticateAdmin = (enteredPin, selectedRole = "Super Admin") => {
-    if (enteredPin === adminPin) {
-      const operatorName = selectedRole === "Super Admin" ? "Julian Vanderveld" : selectedRole === "Senior Manager" ? "Elena Rostova" : "Marcus Vance";
-      const operatorEmail = selectedRole === "Super Admin" ? "admin@NIYARA.com" : selectedRole === "Senior Manager" ? "elena.r@NIYARA.com" : "marcus.v@NIYARA.com";
-
-      setIsAdminAuthenticated(true);
-      setAdminSession({
-        role: selectedRole,
-        user: operatorName,
-        email: operatorEmail,
-        ip: "192.168.1.104 (TLS 1.3)",
-        authenticatedAt: new Date().toLocaleTimeString()
-      });
-
-      const pinToken = createMockJWTToken({
-        _id: "admin-pin-id",
-        name: operatorName,
-        email: operatorEmail,
-        role: "admin"
-      });
-      if (typeof window !== "undefined") {
-        localStorage.setItem("niyara_admin_jwt", pinToken);
-        localStorage.setItem("niyara_jwt_token", pinToken);
-      }
-      setJwtToken(pinToken);
-
-      logSecurityEvent(
-        "ADMIN_LOGIN_SUCCESS",
-        "INFO",
-        `Authenticated as ${selectedRole} (${enteredPin === "8890" ? "PIN" : "Master Passcode"})`,
-        operatorName,
-        selectedRole
-      );
-      showToast(`Welcome back, ${selectedRole}! Admin session unlocked.`);
-      refreshAllAdminData();
-      return { success: true, message: "Access Granted" };
-    } else {
-      logSecurityEvent("ADMIN_PIN_FAILED", "WARN", `Invalid PIN entry: ${enteredPin}`);
-      showToast("Invalid security PIN.");
-      return { success: false, message: "Invalid security PIN." };
-    }
-  };
-
   const lockAdminSession = () => {
     setIsAdminAuthenticated(false);
     logSecurityEvent("ADMIN_SESSION_LOCKED", "INFO", "Session locked by operator request");
@@ -948,7 +905,6 @@ export const AppProvider = ({ children }) => {
         adminPin,
         auditLogs,
         clearAuditLogs,
-        authenticateAdmin,
         authenticateAdminWithEmail,
         lockAdminSession,
         updateAdminPinCode,
