@@ -50,6 +50,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
+// ─── Proxy Configuration (Crucial for Render rate limiting) ─────────────
+app.set("trust proxy", 1);
+
 // ─── Security Headers ────────────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: false // Disable CSP to allow the root HTML status page
