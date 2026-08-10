@@ -1,0 +1,12 @@
+# NIYARA — robots.txt
+# Allow all legitimate search engine crawlers
+
+User-agent: *
+Allow: /
+
+# Disallow admin route (admin is served from a separate domain/subdomain)
+Disallow: /admin
+Disallow: /admin/
+
+# Sitemap (uncomment and update when you have one)
+# Sitemap: https://niyara-eight.vercel.app/sitemap.xml

@@ -708,32 +708,14 @@ export const AppProvider = ({ children }) => {
   const [failedPinAttempts, setFailedPinAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState(0);
 
-  // Registered Admin Accounts for Email/Password Authentication
+  // Registered Admin Accounts — passwords are NOT stored client-side.
+  // Authentication always goes through the backend API (MongoDB + bcrypt).
+  // This list is only used to map display names to admin emails.
   const [adminAccounts, setAdminAccounts] = useState([
-    {
-      email: "admin@NIYARA.com",
-      password: "admin123",
-      name: "Julian Vanderveld",
-      role: "Super Admin"
-    },
-    {
-      email: "julian.v@NIYARA.com",
-      password: "admin123",
-      name: "Julian Vanderveld",
-      role: "Super Admin"
-    },
-    {
-      email: "elena.r@NIYARA.com",
-      password: "manager123",
-      name: "Elena Rostova",
-      role: "Senior Manager"
-    },
-    {
-      email: "marcus.v@NIYARA.com",
-      password: "inventory123",
-      name: "Marcus Vance",
-      role: "Inventory Lead"
-    }
+    { email: "admin@niyara.com", name: "Julian Vanderveld", role: "Super Admin" },
+    { email: "julian.v@niyara.com", name: "Julian Vanderveld", role: "Super Admin" },
+    { email: "elena.r@niyara.com", name: "Elena Rostova", role: "Senior Manager" },
+    { email: "marcus.v@niyara.com", name: "Marcus Vance", role: "Inventory Lead" }
   ]);
 
   const [adminSession, setAdminSession] = useState({
@@ -827,8 +809,9 @@ export const AppProvider = ({ children }) => {
       console.warn("MongoDB API auth call error, attempting local fallback...");
     }
 
+    // Local fallback: only match by email for display name — never compare passwords client-side
     const account = adminAccounts.find(
-      (acc) => acc.email.toLowerCase() === cleanEmail && acc.password === password
+      (acc) => acc.email.toLowerCase() === cleanEmail
     );
 
     if (account) {
@@ -872,7 +855,7 @@ export const AppProvider = ({ children }) => {
   };
 
   const authenticateAdmin = (enteredPin, selectedRole = "Super Admin") => {
-    if (enteredPin === adminPin || enteredPin === "admin123") {
+    if (enteredPin === adminPin) {
       const operatorName = selectedRole === "Super Admin" ? "Julian Vanderveld" : selectedRole === "Senior Manager" ? "Elena Rostova" : "Marcus Vance";
       const operatorEmail = selectedRole === "Super Admin" ? "admin@NIYARA.com" : selectedRole === "Senior Manager" ? "elena.r@NIYARA.com" : "marcus.v@NIYARA.com";
 

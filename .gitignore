@@ -23,7 +23,13 @@ build/
 **/.env
 **/.env.local
 **/.env.development
+**/.env.development.local
+**/.env.test
+**/.env.test.local
 **/.env.production
+**/.env.production.local
+# Keep .env.example files (templates) — these are safe to commit
+!**/.env.example
 
 # Logs
 npm-debug.log*

@@ -35,8 +35,8 @@ fashion/
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/niyara.git
-cd niyara
+git clone https://github.com/sampol2288/Niyara.git
+cd Niyara/fashion
 ```
 
 ### 2. Configure backend environment
@@ -238,3 +238,37 @@ npm run admin        # Start only the admin panel
 npm run build        # Build the frontend for production
 npm run install:all  # Install dependencies for all three packages
 ```
+
+---
+
+## Production Security Checklist
+
+Before going live, complete **all** of the following steps:
+
+### Critical — Do Before Launch
+
+- [ ] **Change JWT_SECRET** — generate a strong 64-byte secret:
+  ```bash
+  openssl rand -base64 64
+  ```
+  Paste the output as the `JWT_SECRET` environment variable on Render.
+
+- [ ] **Change default admin password** — the seeded account `admin@niyara.com / admin123` is active after first deploy. Change it immediately:
+  - Admin panel → Settings → Security → Update Password, OR
+  - MongoDB Atlas UI → `users` collection → update the hashed password
+
+- [ ] **Set `NODE_ENV=production`** on Render environment variables.
+
+- [ ] **Update CORS origins** — Set `FRONTEND_URL` and `ADMIN_URL` in Render to your exact Vercel deployment URLs.
+
+- [ ] **Verify MongoDB Atlas access** — Ensure the cluster allows connections from Render IPs (or set `0.0.0.0/0` with strong auth credentials).
+
+- [ ] **Test SMTP email delivery** — Trigger the OTP flow once in production to confirm emails arrive.
+
+### Recommended
+
+- [ ] Set up Render health check endpoint: `GET /api/health`
+- [ ] Set up custom domain aliases on Vercel (e.g. `niyara.com`, `admin.niyara.com`)
+- [ ] Enable MongoDB Atlas cluster auto-scaling and monitoring alerts
+- [ ] Monitor Render cold-start times (free tier sleeps after 15 min inactivity)
+- [ ] Set up Vercel Analytics or a monitoring solution (e.g. Sentry)

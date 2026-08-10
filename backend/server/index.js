@@ -6,7 +6,7 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 import fs from "fs";
 import { connectDB, getDBStatus } from "./config/db.js";
-import authRoutes from "./routes/auth.js";
+import authRoutes, { ensureDefaultAdminAccount } from "./routes/auth.js";
 import productRoutes from "./routes/products.js";
 import orderRoutes from "./routes/orders.js";
 import reviewRoutes from "./routes/reviews.js";
@@ -262,6 +262,9 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   console.log(`[NIYARA] Starting Backend Server (${NODE_ENV} mode)...`);
   const dbResult = await connectDB();
+  if (dbResult && dbResult.status.startsWith("Connected")) {
+    await ensureDefaultAdminAccount();
+  }
   const server = app.listen(PORT, () => {
     console.log(`[Express] Running on http://localhost:${PORT}`);
     console.log(`[MongoDB] ${dbResult.status} ${dbResult.host ? `(${dbResult.host})` : ""}`);

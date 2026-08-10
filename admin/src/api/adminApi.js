@@ -44,20 +44,46 @@ const authHeaders = () => {
 
 /**
  * Helper: make a request and handle 401 by clearing auth state
+ * Includes localhost fallback if primary backend (e.g. Render) is offline or sleeping
  */
 const apiRequest = async (endpoint, options = {}) => {
-  const res = await fetch(`${API_BASE}${endpoint}`, options);
+  const primaryUrl = `${API_BASE}${endpoint}`;
+  try {
+    const res = await fetch(primaryUrl, options);
 
-  if (res.status === 401 || res.status === 403) {
-    // Token expired or unauthorized — clear stored auth
-    localStorage.removeItem("niyara_admin_jwt");
-    localStorage.removeItem("niyara_admin_authenticated");
-    localStorage.removeItem("niyara_admin_session");
-    // Signal that re-authentication is needed
-    window.dispatchEvent(new CustomEvent("niyara:admin:unauthorized"));
+    if (res.status === 401 || res.status === 403) {
+      // Token expired or unauthorized — clear stored auth
+      localStorage.removeItem("niyara_admin_jwt");
+      localStorage.removeItem("niyara_admin_authenticated");
+      localStorage.removeItem("niyara_admin_session");
+      // Signal that re-authentication is needed
+      window.dispatchEvent(new CustomEvent("niyara:admin:unauthorized"));
+      return { success: false, error: "Session expired. Please log in again.", unauthorized: true, status: res.status };
+    }
+
+    return await res.json();
+  } catch (err) {
+    // Attempt local backend server fallback if running on localhost and primary URL failed
+    if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+      const localBase = "http://localhost:5000/api";
+      if (!primaryUrl.startsWith(localBase)) {
+        try {
+          const localRes = await fetch(`${localBase}${endpoint}`, options);
+          if (localRes.status === 401 || localRes.status === 403) {
+            localStorage.removeItem("niyara_admin_jwt");
+            localStorage.removeItem("niyara_admin_authenticated");
+            localStorage.removeItem("niyara_admin_session");
+            window.dispatchEvent(new CustomEvent("niyara:admin:unauthorized"));
+            return { success: false, error: "Session expired. Please log in again.", unauthorized: true, status: localRes.status };
+          }
+          return await localRes.json();
+        } catch (localErr) {
+          // Local fallback also unreachable
+        }
+      }
+    }
+    return { success: false, error: err.message || "Network error" };
   }
-
-  return await res.json();
 };
 
 export const adminApi = {

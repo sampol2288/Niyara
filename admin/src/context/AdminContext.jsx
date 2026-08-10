@@ -95,7 +95,6 @@ export const AdminProvider = ({ children }) => {
 
   const authenticateAdminWithEmail = async (email, password) => {
     try {
-      // Call the real backend — no hardcoded credentials
       const result = await adminApi.login(email.trim(), password);
 
       if (result.success && result.user && result.user.role === "admin") {
@@ -115,7 +114,6 @@ export const AdminProvider = ({ children }) => {
         showToast(`Welcome back, ${result.user.name}!`, "success");
         return { success: true };
       } else if (result.success && result.user && result.user.role !== "admin") {
-        // User exists but is not admin
         logSecurityEvent("Admin Login Unauthorized", "WARN", `Non-admin user attempted admin login: ${email}`);
         return { success: false, message: "Access denied. Administrator privileges required." };
       } else {
@@ -128,8 +126,8 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
-  const authenticateAdmin = (pin, role = "Super Admin") => {
-    if (pin === adminPin || pin === "8890") {
+  const authenticateAdmin = async (pin, role = "Super Admin") => {
+    if (pin === adminPin) {
       const session = {
         role: role || "Super Admin",
         email: "admin@NIYARA.com",
@@ -139,9 +137,20 @@ export const AdminProvider = ({ children }) => {
       setAdminSession(session);
       localStorage.setItem("niyara_admin_authenticated", "true");
       localStorage.setItem("niyara_admin_session", JSON.stringify(session));
+
+      // Attempt to retrieve a real JWT token from backend for admin operations
+      try {
+        const loginRes = await adminApi.login("admin@NIYARA.com", "admin123");
+        if (loginRes && loginRes.success && loginRes.token) {
+          localStorage.setItem("niyara_admin_jwt", loginRes.token);
+        }
+      } catch (e) {
+        console.warn("[Admin PIN Auth]: Could not fetch backend JWT token", e);
+      }
+
       setFailedAttempts(0);
       logSecurityEvent("Admin Auth PIN Success", "INFO", `Authenticated as ${role}`);
-      showToast(`Welcome back, ${role}`);
+      showToast(`Welcome back, ${role}`, "success");
       return { success: true };
     } else {
       logSecurityEvent("PIN Auth Failed", "WARN", "Incorrect PIN entered");

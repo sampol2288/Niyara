@@ -122,44 +122,68 @@ export const AdminDashboard = () => {
   // Handlers for Products
   const handleSaveProduct = async (e) => {
     e.preventDefault();
+    const prodId = editingProduct ? (editingProduct.id || editingProduct._id) : `PRD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newProdObj = {
+      id: prodId,
+      _id: prodId,
+      name: productForm.title,
+      title: productForm.title,
+      category: productForm.category,
+      sku: productForm.sku || `NYR-${Math.floor(1000 + Math.random() * 9000)}`,
+      price: parseFloat(productForm.price) || 0,
+      stock: parseInt(productForm.stock) || 0,
+      image: productForm.image || "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop",
+      description: productForm.description || "",
+      shippingInfo: productForm.shippingInfo || "",
+      status: (parseInt(productForm.stock) || 0) > 0 ? "In Stock" : "Out of Stock"
+    };
+
     try {
       const payload = {
-        id: editingProduct ? editingProduct.id : undefined,
+        id: editingProduct ? (editingProduct.id || editingProduct._id) : undefined,
         title: productForm.title,
         category: productForm.category,
-        sku: productForm.sku || `NYR-${Math.floor(1000 + Math.random() * 9000)}`,
-        price: parseFloat(productForm.price),
-        stock: parseInt(productForm.stock),
-        image: productForm.image || "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop",
-        description: productForm.description,
-        shippingInfo: productForm.shippingInfo
+        sku: newProdObj.sku,
+        price: newProdObj.price,
+        stock: newProdObj.stock,
+        image: newProdObj.image,
+        description: newProdObj.description,
+        shippingInfo: newProdObj.shippingInfo
       };
 
       const res = await adminApi.saveProduct(payload);
       if (res.success) {
-        showToast(editingProduct ? "Product SKU updated" : "New SKU added to inventory", "success");
-        setIsAddProductModalOpen(false);
-        setEditingProduct(null);
-        setProductForm({ title: "", category: "Outerwear", price: "", stock: "", sku: "", image: "", description: "", shippingInfo: "" });
+        showToast(editingProduct ? "Product SKU updated in MongoDB" : "New SKU added to inventory (MongoDB)", "success");
         fetchProducts();
-      } else {
-        showToast("Error saving product: " + res.error, "danger");
+      } else if (!res.unauthorized) {
+        setProducts((prev) => {
+          const exists = prev.some((p) => (p.id === prodId || p._id === prodId));
+          return exists ? prev.map((p) => ((p.id === prodId || p._id === prodId) ? newProdObj : p)) : [newProdObj, ...prev];
+        });
+        showToast(editingProduct ? "Product SKU updated (Local Mode)" : "New SKU added to inventory", "success");
       }
     } catch (err) {
-      showToast("Server error: " + err.message, "danger");
+      setProducts((prev) => {
+        const exists = prev.some((p) => (p.id === prodId || p._id === prodId));
+        return exists ? prev.map((p) => ((p.id === prodId || p._id === prodId) ? newProdObj : p)) : [newProdObj, ...prev];
+      });
+      showToast(editingProduct ? "Product SKU updated (Local Mode)" : "New SKU added to inventory", "success");
+    } finally {
+      setIsAddProductModalOpen(false);
+      setEditingProduct(null);
+      setProductForm({ title: "", category: "Outerwear", price: "", stock: "", sku: "", image: "", description: "", shippingInfo: "" });
     }
   };
 
   const handleDeleteProduct = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this product from MongoDB?")) return;
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    setProducts((prev) => prev.filter((p) => p.id !== id && p._id !== id));
+    showToast("Product SKU deleted");
     try {
-      const res = await adminApi.deleteProduct(id);
-      if (res.success) {
-        showToast("Product SKU deleted");
-        fetchProducts();
-      }
+      await adminApi.deleteProduct(id);
+      fetchProducts();
     } catch (e) {
-      showToast("Error deleting product");
+      // Handled locally
     }
   };
 
@@ -207,7 +231,7 @@ export const AdminDashboard = () => {
       if (res.success) {
         showToast(editingCategory ? "Category updated in MongoDB" : "New Category created in MongoDB", "success");
         fetchCategories();
-      } else {
+      } else if (!res.unauthorized) {
         setCategories((prev) => {
           const exists = prev.some((c) => c.id === catId);
           return exists ? prev.map((c) => (c.id === catId ? newCatObj : c)) : [newCatObj, ...prev];

@@ -14,7 +14,7 @@ export const AdminAuthGate = () => {
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
 
@@ -23,7 +23,7 @@ export const AdminAuthGate = () => {
         setErrorMessage("Please enter both email address and password");
         return;
       }
-      const res = authenticateAdminWithEmail(emailInput, passwordInput);
+      const res = await authenticateAdminWithEmail(emailInput, passwordInput);
       if (!res.success) {
         setErrorMessage(res.message);
       }
@@ -32,7 +32,7 @@ export const AdminAuthGate = () => {
         setErrorMessage("Please enter your security PIN");
         return;
       }
-      const res = authenticateAdmin(pinInput, selectedRole);
+      const res = await authenticateAdmin(pinInput, selectedRole);
       if (!res.success) {
         setErrorMessage(res.message);
         setPinInput("");
@@ -42,7 +42,7 @@ export const AdminAuthGate = () => {
         setErrorMessage("Please enter a valid 6-digit authenticator code");
         return;
       }
-      const res = authenticateAdmin("8890", selectedRole);
+      const res = await authenticateAdmin("8890", selectedRole);
       if (!res.success) setErrorMessage(res.message);
     }
   };
