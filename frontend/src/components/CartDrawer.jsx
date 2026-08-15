@@ -14,7 +14,9 @@ export const CartDrawer = () => {
     FREE_SHIPPING_THRESHOLD,
     setView,
     currency,
-    showToast
+    showToast,
+    user,
+    setIsAuthModalOpen
   } = useApp();
 
   const [promoCode, setPromoCode] = useState("");
@@ -226,8 +228,13 @@ export const CartDrawer = () => {
             {/* Action Buttons */}
             <button
               onClick={() => {
-                setIsCartOpen(false);
-                setView("checkout");
+                if (!user) {
+                  setIsAuthModalOpen(true);
+                  showToast("Please sign in or create an account to checkout");
+                } else {
+                  setIsCartOpen(false);
+                  setView("checkout");
+                }
               }}
               className="btn-primary"
               style={{ width: "100%", padding: "1.1rem" }}

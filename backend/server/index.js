@@ -3,6 +3,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import mongoSanitize from "express-mongo-sanitize";
+import xss from "xss-clean";
+import hpp from "hpp";
 import path from "path";
 import fs from "fs";
 import { connectDB, getDBStatus } from "./config/db.js";
@@ -55,7 +58,14 @@ app.set("trust proxy", 1);
 
 // ─── Security Headers ────────────────────────────────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: false // Disable CSP to allow the root HTML status page
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"]
+    }
+  }
 }));
 
 // ─── CORS Configuration ───────────────────────────────────────────────────────
@@ -111,6 +121,16 @@ app.use(globalLimiter);
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+
+// ─── Data Sanitization & Security Middlewares ─────────────────────────────────
+// Prevent NoSQL injection
+app.use(mongoSanitize());
+
+// Prevent XSS attacks
+app.use(xss());
+
+// Prevent HTTP Parameter Pollution
+app.use(hpp());
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use("/api/auth", authLimiter, authRoutes);

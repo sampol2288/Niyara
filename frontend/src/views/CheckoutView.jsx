@@ -4,9 +4,21 @@ import confetti from "canvas-confetti";
 import { ShieldCheck, Check, ArrowRight, Truck, CreditCard, Lock, Package, ArrowLeft } from "lucide-react";
 
 export const CheckoutView = () => {
-  const { user, cart, getSubtotal, formatPrice, FREE_SHIPPING_THRESHOLD, placeOrder, setView, showToast } = useApp();
+  const { user, cart, getSubtotal, formatPrice, FREE_SHIPPING_THRESHOLD, placeOrder, setView, showToast, setIsAuthModalOpen } = useApp();
+
+  useEffect(() => {
+    if (!user) {
+      setView("home");
+      setIsAuthModalOpen(true);
+      showToast("Please sign in or create an account to checkout");
+    }
+  }, [user, setView, setIsAuthModalOpen, showToast]);
 
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review, 4: Confirmation
+
+  if (!user) {
+    return null;
+  }
 
   // Form States
   const [shippingForm, setShippingForm] = useState({

@@ -395,11 +395,12 @@ router.get("/me", protectJWT, (req, res) => {
  */
 export const ensureDefaultAdminAccount = async () => {
   try {
-    const adminEmail = "admin@niyara.com";
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@niyara.com";
     const existingAdmin = await User.findOne({ email: adminEmail });
     if (!existingAdmin) {
       const salt = await bcrypt.genSalt(12);
-      const hashedPassword = await bcrypt.hash("admin123", salt);
+      const defaultPassword = process.env.ADMIN_PASSWORD || "admin123";
+      const hashedPassword = await bcrypt.hash(defaultPassword, salt);
       await User.create({
         name: "Julian Vanderveld",
         email: adminEmail,
@@ -407,15 +408,15 @@ export const ensureDefaultAdminAccount = async () => {
         role: "admin",
         isVerified: true
       });
-      console.log("[MongoDB Seed] Default admin account created: admin@niyara.com / admin123");
-      if (process.env.NODE_ENV === "production") {
+      console.log(`[MongoDB Seed] Default admin account created: ${adminEmail} / ${defaultPassword === "admin123" ? "admin123" : "****"}`);
+      if (process.env.NODE_ENV === "production" && defaultPassword === "admin123") {
         console.warn("⚠️  [SECURITY] Default admin password 'admin123' is active in PRODUCTION.");
-        console.warn("⚠️  [SECURITY] Change it immediately via the admin panel or MongoDB Atlas.");
+        console.warn("⚠️  [SECURITY] Please set ADMIN_PASSWORD in your .env file immediately.");
       }
     } else if (existingAdmin.role !== "admin") {
       existingAdmin.role = "admin";
       await existingAdmin.save();
-      console.log("[MongoDB Seed] Updated role to admin for admin@NIYARA.com");
+      console.log(`[MongoDB Seed] Updated role to admin for ${adminEmail}`);
     }
   } catch (err) {
     console.warn("[MongoDB Seed Warning]: Could not seed default admin user:", err.message);
