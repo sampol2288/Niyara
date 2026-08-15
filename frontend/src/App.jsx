@@ -1,4 +1,5 @@
 import React from "react";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AppProvider, useApp } from "./context/AppContext";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -55,10 +56,14 @@ const AppContent = () => {
   );
 };
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "placeholder-client-id";
+
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </GoogleOAuthProvider>
   );
 }

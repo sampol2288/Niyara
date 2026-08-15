@@ -1,6 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import { User } from "../models/User.js";
 import Category from "../models/Category.js";
 import Product from "../models/Product.js";
@@ -12,6 +13,7 @@ import { sendOTPEmail, sendCustomEmail } from "../services/emailService.js";
 import { adminOnly } from "../middleware/adminOnly.js";
 
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "placeholder-client-id");
 
 // JWT secret MUST come from environment — validated at startup
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -371,6 +373,60 @@ router.patch("/update-password", protectJWT, async (req, res) => {
     return res.json({ success: true, message: "Password updated successfully." });
   } catch (error) {
     return res.status(500).json({ success: false, error: "Server error updating password." });
+  }
+});
+
+// ─── POST /api/auth/google ───────────────────────────────────────────────────
+router.post("/google", async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ success: false, error: "Google credential is required." });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID || "placeholder-client-id", 
+    });
+    const payload = ticket.getPayload();
+    const email = payload.email.toLowerCase();
+    const name = payload.name;
+    const picture = payload.picture;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      const salt = await bcrypt.genSalt(12);
+      const hashedPassword = await bcrypt.hash(Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12), salt);
+
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: "member",
+        isVerified: true,
+        avatar: picture
+      });
+    }
+
+    const token = generateJWT(user);
+
+    return res.json({
+      success: true,
+      message: "Authenticated successfully with Google.",
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        avatar: user.avatar,
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error("[Google Auth Error]:", error);
+    return res.status(500).json({ success: false, error: "Server error during Google authentication." });
   }
 });
 

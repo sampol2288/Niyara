@@ -123,6 +123,17 @@ export const authApi = {
   },
 
   /**
+   * Login/Register with Google OAuth credential.
+   */
+  googleLogin: async (credential) => {
+    const res = await apiRequest("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential })
+    });
+    return res;
+  },
+
+  /**
    * Reset password using email after OTP verification.
    */
   resetPassword: async (email, newPassword) => {

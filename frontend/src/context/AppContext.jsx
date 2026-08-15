@@ -380,6 +380,18 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (credential) => {
+    const response = await authApi.googleLogin(credential);
+    if (response.success) {
+      setUser(response.user, response.token);
+      showToast(`Welcome, ${response.user.name.split(" ")[0]}!`);
+      return { success: true, user: response.user, token: response.token };
+    } else {
+      showToast(response.error || "Google login failed.");
+      return { success: false, error: response.error };
+    }
+  };
+
   const startSignupOtp = async (name, email, password) => {
     const cleanEmail = email.trim().toLowerCase();
     const exists = registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail);
@@ -865,6 +877,7 @@ export const AppProvider = ({ children }) => {
         registeredUsers,
         activeOtpSession,
         loginUser,
+        loginWithGoogle,
         startSignupOtp,
         startResetOtp,
         verifyOtpCode,
