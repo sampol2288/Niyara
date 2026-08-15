@@ -6,9 +6,33 @@ export const AuthModal = () => {
   const {
     isAuthModalOpen,
     setIsAuthModalOpen,
+    setUser,
+    showToast
   } = useApp();
 
   if (!isAuthModalOpen) return null;
+
+  const handleGoogleLogin = () => {
+    const mockGoogleUser = {
+      name: "Google User",
+      email: "google.user@example.com",
+      role: "user"
+    };
+    setUser(mockGoogleUser);
+    showToast("Successfully logged in with Google");
+    setIsAuthModalOpen(false);
+  };
+
+  const handleAppleLogin = () => {
+    const mockAppleUser = {
+      name: "Apple User",
+      email: "apple.user@icloud.com",
+      role: "user"
+    };
+    setUser(mockAppleUser);
+    showToast("Successfully logged in with Apple");
+    setIsAuthModalOpen(false);
+  };
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
@@ -58,7 +82,7 @@ export const AuthModal = () => {
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
           <button
             type="button"
-            onClick={() => window.location.href = "https://accounts.google.com/signin"}
+            onClick={handleGoogleLogin}
             className="btn-secondary"
             style={{ padding: "1rem", fontSize: "0.75rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.75rem" }}
           >
@@ -73,7 +97,7 @@ export const AuthModal = () => {
           </button>
           <button
             type="button"
-            onClick={() => window.location.href = "https://appleid.apple.com/sign-in"}
+            onClick={handleAppleLogin}
             className="btn-secondary"
             style={{ padding: "1rem", fontSize: "0.75rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.75rem" }}
           >
