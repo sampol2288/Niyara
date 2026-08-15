@@ -5,7 +5,6 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
 import xss from "xss-clean";
-import hpp from "hpp";
 import path from "path";
 import fs from "fs";
 import { connectDB, getDBStatus } from "./config/db.js";
@@ -128,9 +127,6 @@ app.use(mongoSanitize());
 
 // Prevent XSS attacks
 app.use(xss());
-
-// Prevent HTTP Parameter Pollution
-app.use(hpp());
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use("/api/auth", authLimiter, authRoutes);
