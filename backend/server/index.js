@@ -115,6 +115,15 @@ const authLimiter = rateLimit({
   message: { success: false, error: "Too many authentication attempts. Please wait 15 minutes." }
 });
 
+// Extra-strict limiter for admin login — only 5 attempts per 15 minutes
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many admin login attempts. Please wait 15 minutes." }
+});
+
 app.use(globalLimiter);
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
@@ -129,6 +138,8 @@ app.use(mongoSanitize());
 app.use(xss());
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
+// Admin login gets its own stricter rate limiter (5 req/15min)
+app.use("/api/auth/admin-login", adminLoginLimiter);
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);

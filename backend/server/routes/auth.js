@@ -18,13 +18,64 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || "placehold
 // JWT secret MUST come from environment — validated at startup
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
+const ADMIN_JWT_EXPIRES_IN = "4h";
 
 // In-memory OTP sessions: email -> { code, expiresAt, purpose, name }
 // NOTE: For multi-instance deployments, replace with Redis.
 const activeOTPSessions = new Map();
 
+// ─── Account Lockout System ───────────────────────────────────────────────────
+// Tracks failed login attempts per email to prevent brute-force attacks.
+// NOTE: For multi-instance deployments, replace with Redis.
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const failedLoginAttempts = new Map(); // email -> { count, firstAttemptAt, lockedUntil }
+
+const checkAccountLockout = (email) => {
+  const record = failedLoginAttempts.get(email);
+  if (!record) return { locked: false };
+
+  // Check if lockout has expired
+  if (record.lockedUntil && Date.now() > record.lockedUntil) {
+    failedLoginAttempts.delete(email);
+    return { locked: false };
+  }
+
+  // Check if currently locked out
+  if (record.lockedUntil && Date.now() <= record.lockedUntil) {
+    const remainingMs = record.lockedUntil - Date.now();
+    const remainingMin = Math.ceil(remainingMs / 60000);
+    return { locked: true, remainingMin, remainingMs };
+  }
+
+  // Reset counter if the tracking window has passed
+  if (Date.now() - record.firstAttemptAt > LOCKOUT_DURATION_MS) {
+    failedLoginAttempts.delete(email);
+    return { locked: false };
+  }
+
+  return { locked: false, attemptsRemaining: MAX_FAILED_ATTEMPTS - record.count };
+};
+
+const recordFailedAttempt = (email) => {
+  const record = failedLoginAttempts.get(email) || { count: 0, firstAttemptAt: Date.now(), lockedUntil: null };
+  record.count += 1;
+
+  if (record.count >= MAX_FAILED_ATTEMPTS) {
+    record.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+    console.warn(`[SECURITY] Account locked: ${email} after ${record.count} failed attempts`);
+  }
+
+  failedLoginAttempts.set(email, record);
+  return { attemptsRemaining: Math.max(0, MAX_FAILED_ATTEMPTS - record.count), locked: record.lockedUntil != null };
+};
+
+const clearFailedAttempts = (email) => {
+  failedLoginAttempts.delete(email);
+};
+
 // ─── Helper: Generate JWT Token ───────────────────────────────────────────────
-const generateJWT = (user) => {
+const generateJWT = (user, expiresIn = JWT_EXPIRES_IN) => {
   return jwt.sign(
     {
       sub: user._id ? user._id.toString() : user.id,
@@ -34,7 +85,7 @@ const generateJWT = (user) => {
       iss: "niyara-auth-service"
     },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn }
   );
 };
 
@@ -444,6 +495,86 @@ router.get("/me", protectJWT, (req, res) => {
       isVerified: req.user.isVerified
     }
   });
+});
+
+// ─── POST /api/auth/admin-login ───────────────────────────────────────────────
+// Dedicated admin login endpoint with stricter security:
+// - Enforces admin role server-side
+// - Shorter JWT expiry (4h vs 7d)
+// - Account lockout after 5 failed attempts
+router.post("/admin-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "Email and password are required." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check account lockout
+    const lockoutStatus = checkAccountLockout(cleanEmail);
+    if (lockoutStatus.locked) {
+      return res.status(429).json({
+        success: false,
+        error: `Account temporarily locked due to too many failed attempts. Try again in ${lockoutStatus.remainingMin} minute(s).`,
+        locked: true,
+        lockoutRemainingMs: lockoutStatus.remainingMs
+      });
+    }
+
+    const user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      const attempt = recordFailedAttempt(cleanEmail);
+      return res.status(401).json({
+        success: false,
+        error: "Invalid credentials.",
+        attemptsRemaining: attempt.attemptsRemaining
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      const attempt = recordFailedAttempt(cleanEmail);
+      return res.status(401).json({
+        success: false,
+        error: "Invalid credentials.",
+        attemptsRemaining: attempt.attemptsRemaining
+      });
+    }
+
+    // Enforce admin role
+    if (user.role !== "admin") {
+      recordFailedAttempt(cleanEmail);
+      return res.status(403).json({
+        success: false,
+        error: "Access denied. Administrator privileges are required."
+      });
+    }
+
+    // Success — clear failed attempts and issue short-lived admin token
+    clearFailedAttempts(cleanEmail);
+    const token = generateJWT(user, ADMIN_JWT_EXPIRES_IN);
+
+    return res.json({
+      success: true,
+      message: "Admin authenticated successfully.",
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        avatar: user.avatar,
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error("[Admin Login Error]:", error);
+    return res.status(500).json({ success: false, error: "Server error during admin authentication." });
+  }
 });
 
 /**

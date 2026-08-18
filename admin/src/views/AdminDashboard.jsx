@@ -25,7 +25,6 @@ import {
   TrendingUp,
   RefreshCw,
   LogOut,
-  KeyRound,
   UserPlus,
   ShieldCheck,
   Eye,
@@ -43,7 +42,6 @@ export const AdminDashboard = () => {
     lockAdminSession,
     auditLogs,
     clearAuditLogs,
-    updateAdminPinCode,
     showToast,
     formatPrice,
     products,
@@ -109,9 +107,6 @@ export const AdminDashboard = () => {
   const [isAddDiscountModalOpen, setIsAddDiscountModalOpen] = useState(false);
   const [discountForm, setDiscountForm] = useState({ code: "", type: "Percentage", value: "", usageCap: "100", expires: "Dec 31, 2026" });
 
-  // PIN modal state
-  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
-  const [pinForm, setPinForm] = useState({ currentPin: "", newPin: "", confirmPin: "" });
 
   // KPI calculations
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -405,21 +400,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Handlers for PIN Change
-  const handlePinSubmit = (e) => {
-    e.preventDefault();
-    if (pinForm.newPin !== pinForm.confirmPin) {
-      showToast("New PIN and Confirm PIN do not match", "danger");
-      return;
-    }
-    const res = updateAdminPinCode(pinForm.currentPin, pinForm.newPin);
-    if (res.success) {
-      setIsPinModalOpen(false);
-      setPinForm({ currentPin: "", newPin: "", confirmPin: "" });
-    } else {
-      showToast(res.message, "danger");
-    }
-  };
 
   // Filtered lists
   const filteredProducts = products.filter((p) => {
@@ -611,13 +591,6 @@ export const AdminDashboard = () => {
 
         {/* Footer controls */}
         <div style={{ paddingTop: "1.5rem", borderTop: "1px solid var(--border-color)", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <button
-            onClick={() => setIsPinModalOpen(true)}
-            className="btn-secondary"
-            style={{ width: "100%", justifyContent: "center", fontSize: "0.8rem" }}
-          >
-            <KeyRound size={14} /> Change Security PIN
-          </button>
           <button
             onClick={lockAdminSession}
             style={{
@@ -1488,37 +1461,6 @@ export const AdminDashboard = () => {
               </div>
               <button type="submit" className="btn-gold" style={{ marginTop: "1rem", justifyContent: "center" }}>
                 GENERATE PROMO VOUCHER
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Change PIN Modal */}
-      {isPinModalOpen && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
-          <div className="glass-panel" style={{ maxWidth: "420px", width: "100%", padding: "2rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <h3 style={{ fontSize: "1.25rem", fontWeight: 700 }}>Change Security PIN</h3>
-              <button onClick={() => setIsPinModalOpen(false)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer" }}>
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handlePinSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div>
-                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>CURRENT PIN</label>
-                <input type="password" className="admin-input" maxLength={6} value={pinForm.currentPin} onChange={(e) => setPinForm({ ...pinForm, currentPin: e.target.value })} required />
-              </div>
-              <div>
-                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>NEW PIN (4-6 DIGITS)</label>
-                <input type="password" className="admin-input" maxLength={6} value={pinForm.newPin} onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value })} required />
-              </div>
-              <div>
-                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>CONFIRM NEW PIN</label>
-                <input type="password" className="admin-input" maxLength={6} value={pinForm.confirmPin} onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value })} required />
-              </div>
-              <button type="submit" className="btn-gold" style={{ marginTop: "1rem", justifyContent: "center" }}>
-                UPDATE MASTER PIN
               </button>
             </form>
           </div>

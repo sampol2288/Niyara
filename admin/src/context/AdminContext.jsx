@@ -1,7 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { adminApi } from "../api/adminApi";
 
 const AdminContext = createContext();
+
+// ─── Idle Timeout Configuration ───────────────────────────────────────────────
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes of inactivity
+const IDLE_ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
 
 export const AdminProvider = ({ children }) => {
   const [theme, setTheme] = useState("dark");
@@ -27,21 +31,15 @@ export const AdminProvider = ({ children }) => {
     }, 4000);
   };
 
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    return localStorage.getItem("niyara_admin_authenticated") === "true";
-  });
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
 
-  const [adminSession, setAdminSession] = useState(() => {
-    const saved = localStorage.getItem("niyara_admin_session");
-    return saved ? JSON.parse(saved) : { role: "Super Admin", email: "admin@NIYARA.com", authenticatedAt: null };
+  const [adminSession, setAdminSession] = useState({
+    role: null,
+    email: null,
+    name: null,
+    authenticatedAt: null
   });
-
-  const [adminPin, setAdminPin] = useState(() => {
-    return localStorage.getItem("niyara_admin_pin") || "8890";
-  });
-
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [lockoutTime, setLockoutTime] = useState(0);
 
   const [auditLogs, setAuditLogs] = useState(() => {
     const saved = localStorage.getItem("niyara_admin_audit_logs");
@@ -79,20 +77,111 @@ export const AdminProvider = ({ children }) => {
     showToast("Audit security logs cleared");
   };
 
-  const updateAdminPinCode = (currentPin, newPin) => {
-    if (currentPin !== adminPin) {
-      return { success: false, message: "Current Security PIN is incorrect." };
-    }
-    if (!/^\d{4,6}$/.test(newPin)) {
-      return { success: false, message: "New PIN must be 4 to 6 digits." };
-    }
-    setAdminPin(newPin);
-    localStorage.setItem("niyara_admin_pin", newPin);
-    logSecurityEvent("PIN Updated", "WARN", "Master Security PIN changed by administrator");
-    showToast("Master Security PIN updated successfully", "success");
-    return { success: true, message: "PIN updated successfully" };
-  };
+  // ─── JWT Session Validation on App Load ─────────────────────────────────────
+  // Immediately validates the stored JWT token on mount. If the token is
+  // expired, invalid, or the user is no longer an admin, auth state is cleared.
+  useEffect(() => {
+    const validateSession = async () => {
+      const storedAuth = localStorage.getItem("niyara_admin_authenticated");
+      const storedToken = localStorage.getItem("niyara_admin_jwt");
 
+      if (storedAuth !== "true" || !storedToken) {
+        setIsAdminAuthenticated(false);
+        setIsSessionLoading(false);
+        return;
+      }
+
+      try {
+        const result = await adminApi.verifySession();
+
+        if (result.success && result.user && result.user.role === "admin") {
+          const savedSession = localStorage.getItem("niyara_admin_session");
+          const session = savedSession
+            ? JSON.parse(savedSession)
+            : {
+                role: result.user.role,
+                name: result.user.name,
+                email: result.user.email,
+                authenticatedAt: new Date().toISOString()
+              };
+          setAdminSession(session);
+          setIsAdminAuthenticated(true);
+        } else {
+          // Token valid but user is not admin, or token invalid
+          localStorage.removeItem("niyara_admin_authenticated");
+          localStorage.removeItem("niyara_admin_jwt");
+          localStorage.removeItem("niyara_admin_session");
+          setIsAdminAuthenticated(false);
+          if (result.user && result.user.role !== "admin") {
+            logSecurityEvent("Session Rejected", "WARN", "Stored token belongs to non-admin user — session cleared");
+          } else {
+            logSecurityEvent("Session Expired", "WARN", "Stored JWT token is no longer valid — re-authentication required");
+          }
+        }
+      } catch (err) {
+        // Network error — allow offline access if token exists (graceful degradation)
+        console.warn("[Session Validation] Could not reach server:", err.message);
+        const savedSession = localStorage.getItem("niyara_admin_session");
+        if (savedSession) {
+          setAdminSession(JSON.parse(savedSession));
+          setIsAdminAuthenticated(true);
+        }
+      }
+
+      setIsSessionLoading(false);
+    };
+
+    validateSession();
+  }, []);
+
+  // ─── Idle Timeout System ────────────────────────────────────────────────────
+  // Auto-locks the admin session after 30 minutes of no user activity.
+  const idleTimerRef = useRef(null);
+
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    idleTimerRef.current = setTimeout(() => {
+      if (isAdminAuthenticated) {
+        setIsAdminAuthenticated(false);
+        localStorage.removeItem("niyara_admin_authenticated");
+        localStorage.removeItem("niyara_admin_jwt");
+        localStorage.removeItem("niyara_admin_session");
+        logSecurityEvent("Idle Timeout", "WARN", "Session auto-locked after 30 minutes of inactivity");
+        showToast("Session locked due to inactivity", "error");
+      }
+    }, IDLE_TIMEOUT_MS);
+  }, [isAdminAuthenticated]);
+
+  useEffect(() => {
+    if (!isAdminAuthenticated) {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+      return;
+    }
+
+    // Start the idle timer
+    resetIdleTimer();
+
+    // Reset timer on any user activity
+    const handleActivity = () => resetIdleTimer();
+    IDLE_ACTIVITY_EVENTS.forEach((event) => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    return () => {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+      IDLE_ACTIVITY_EVENTS.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [isAdminAuthenticated, resetIdleTimer]);
+
+  // ─── Admin Email + Password Authentication ──────────────────────────────────
   const authenticateAdminWithEmail = async (email, password) => {
     try {
       const result = await adminApi.login(email.trim(), password);
@@ -109,16 +198,26 @@ export const AdminProvider = ({ children }) => {
         localStorage.setItem("niyara_admin_authenticated", "true");
         localStorage.setItem("niyara_admin_session", JSON.stringify(session));
         localStorage.setItem("niyara_admin_jwt", result.token);
-        setFailedAttempts(0);
         logSecurityEvent("Admin Login Success", "INFO", `Authenticated as ${result.user.name} (${result.user.email})`);
         showToast(`Welcome back, ${result.user.name}!`, "success");
         return { success: true };
-      } else if (result.success && result.user && result.user.role !== "admin") {
-        logSecurityEvent("Admin Login Unauthorized", "WARN", `Non-admin user attempted admin login: ${email}`);
-        return { success: false, message: "Access denied. Administrator privileges required." };
+      } else if (result.locked) {
+        logSecurityEvent("Account Locked", "CRITICAL", `Admin login locked for: ${email}`);
+        return {
+          success: false,
+          message: result.error,
+          locked: true,
+          lockoutRemainingMs: result.lockoutRemainingMs
+        };
+      } else if (result.error) {
+        logSecurityEvent("Login Failed", "WARN", `Failed login attempt for ${email}: ${result.error}`);
+        return {
+          success: false,
+          message: result.error,
+          attemptsRemaining: result.attemptsRemaining
+        };
       } else {
-        logSecurityEvent("Login Failed", "WARN", `Failed credentials attempt for ${email}`);
-        return { success: false, message: result.error || "Invalid email or password" };
+        return { success: false, message: "Invalid email or password" };
       }
     } catch (err) {
       console.error("[Admin Login Error]:", err);
@@ -135,7 +234,7 @@ export const AdminProvider = ({ children }) => {
     showToast("Terminal session locked");
   };
 
-  // Listen for unauthorized events from API (token expired)
+  // Listen for unauthorized events from API (token expired during a fetch)
   useEffect(() => {
     const handleUnauthorized = () => {
       setIsAdminAuthenticated(false);
@@ -253,13 +352,10 @@ export const AdminProvider = ({ children }) => {
         toasts,
         showToast,
         isAdminAuthenticated,
+        isSessionLoading,
         adminSession,
-        adminPin,
-        failedAttempts,
-        lockoutTime,
         auditLogs,
         clearAuditLogs,
-        updateAdminPinCode,
         authenticateAdminWithEmail,
         lockAdminSession,
         logSecurityEvent,

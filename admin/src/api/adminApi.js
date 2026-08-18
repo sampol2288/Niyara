@@ -94,12 +94,28 @@ export const adminApi = {
   },
 
   login: async (email, password) => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    const res = await fetch(`${API_BASE}/auth/admin-login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password })
     });
     return await res.json();
+  },
+
+  verifySession: async () => {
+    const token = getAdminToken();
+    if (!token) return { success: false, error: "No token found" };
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 401 || res.status === 403) {
+        return { success: false, error: "Token expired or invalid" };
+      }
+      return await res.json();
+    } catch (err) {
+      return { success: false, error: err.message || "Network error" };
+    }
   },
 
   // ─── Products ──────────────────────────────────────────────────────────────

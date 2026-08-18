@@ -4,9 +4,9 @@ import { AdminAuthGate } from "./components/AdminAuthGate";
 import { AdminDashboard } from "./views/AdminDashboard";
 
 export const App = () => {
-  const { isAdminAuthenticated } = useAdmin();
+  const { isAdminAuthenticated, isSessionLoading } = useAdmin();
 
-  if (!isAdminAuthenticated) {
+  if (isSessionLoading || !isAdminAuthenticated) {
     return <AdminAuthGate />;
   }
 

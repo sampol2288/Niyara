@@ -1,65 +1,95 @@
 import React, { useState, useEffect } from "react";
 import { useAdmin } from "../context/AdminContext";
-import { Shield, Lock, Mail, KeyRound, AlertTriangle, Eye, EyeOff, Sun, Moon, Sparkles } from "lucide-react";
+import { Shield, Lock, Mail, Eye, EyeOff, Sun, Moon, AlertTriangle, Clock, Loader2 } from "lucide-react";
 
 export const AdminAuthGate = () => {
-  const { authenticateAdminWithEmail, authenticateAdmin, lockoutTime, theme, toggleTheme } = useAdmin();
+  const { authenticateAdminWithEmail, isSessionLoading, theme, toggleTheme } = useAdmin();
 
-  const [authMode, setAuthMode] = useState("email"); // 'email' | 'pin' | '2fa'
-  const [emailInput, setEmailInput] = useState("admin@NIYARA.com");
-  const [passwordInput, setPasswordInput] = useState("admin123");
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("Super Admin");
-  const [pinInput, setPinInput] = useState("");
-  const [twoFactorCode, setTwoFactorCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attemptsRemaining, setAttemptsRemaining] = useState(null);
+  const [lockoutCountdown, setLockoutCountdown] = useState(0);
+
+  // Lockout countdown timer
+  useEffect(() => {
+    if (lockoutCountdown <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutCountdown((prev) => {
+        if (prev <= 1) {
+          setErrorMessage("");
+          setAttemptsRemaining(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutCountdown]);
+
+  const formatCountdown = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
 
-    if (authMode === "email") {
-      if (!emailInput || !passwordInput) {
-        setErrorMessage("Please enter both email address and password");
-        return;
-      }
-      const res = await authenticateAdminWithEmail(emailInput, passwordInput);
-      if (!res.success) {
-        setErrorMessage(res.message);
-      }
-    } else if (authMode === "pin") {
-      if (!pinInput) {
-        setErrorMessage("Please enter your security PIN");
-        return;
-      }
-      const res = await authenticateAdmin(pinInput, selectedRole);
-      if (!res.success) {
-        setErrorMessage(res.message);
-        setPinInput("");
-      }
-    } else if (authMode === "2fa") {
-      if (twoFactorCode.trim().length !== 6) {
-        setErrorMessage("Please enter a valid 6-digit authenticator code");
-        return;
-      }
-      const res = await authenticateAdmin("8890", selectedRole);
-      if (!res.success) setErrorMessage(res.message);
+    if (!emailInput || !passwordInput) {
+      setErrorMessage("Please enter both email address and password.");
+      return;
     }
-  };
 
-  const handleNumpadClick = (num) => {
-    if (pinInput.length < 6) {
-      setPinInput((prev) => prev + num);
+    setIsSubmitting(true);
+
+    const res = await authenticateAdminWithEmail(emailInput, passwordInput);
+
+    if (!res.success) {
+      setErrorMessage(res.message);
+
+      if (res.locked && res.lockoutRemainingMs) {
+        setLockoutCountdown(Math.ceil(res.lockoutRemainingMs / 1000));
+        setAttemptsRemaining(0);
+      } else if (res.attemptsRemaining !== undefined) {
+        setAttemptsRemaining(res.attemptsRemaining);
+      }
     }
-  };
 
-  const handleFillDemoCredentials = () => {
-    setEmailInput("admin@NIYARA.com");
-    setPasswordInput("admin123");
-    setErrorMessage("");
+    setIsSubmitting(false);
   };
 
   const isLight = theme === "light";
+  const isLockedOut = lockoutCountdown > 0;
+
+  // Show loading spinner while validating stored session
+  if (isSessionLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          width: "100vw",
+          background: isLight
+            ? "radial-gradient(ellipse at center, #ffffff 0%, #f4f4f5 100%)"
+            : "radial-gradient(ellipse at top, #141418 0%, #09090b 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: "1rem"
+        }}
+      >
+        <Loader2 size={40} style={{ color: "var(--accent-gold)", animation: "spin 1s linear infinite" }} />
+        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", letterSpacing: "0.05em" }}>
+          VALIDATING SESSION...
+        </p>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -159,51 +189,63 @@ export const AdminAuthGate = () => {
 
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            gap: "0.25rem",
             background: "var(--bg-secondary)",
-            padding: "0.25rem",
+            padding: "0.6rem 1rem",
             borderRadius: "0.5rem",
-            marginBottom: "1.75rem"
+            marginBottom: "1.75rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.35rem"
           }}
         >
-          <button
-            type="button"
-            onClick={() => { setAuthMode("email"); setErrorMessage(""); }}
-            style={{
-              padding: "0.6rem",
-              borderRadius: "0.375rem",
-              border: "none",
-              background: "var(--bg-elevated)",
-              color: "var(--accent-gold)",
-              fontWeight: 700,
-              fontSize: "0.8rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.35rem"
-            }}
-          >
-            <Mail size={14} /> Email Authentication
-          </button>
+          <Mail size={14} style={{ color: "var(--accent-gold)" }} />
+          <span style={{ color: "var(--accent-gold)", fontWeight: 700, fontSize: "0.8rem" }}>
+            Administrator Authentication
+          </span>
         </div>
 
+        {/* Error / Lockout Messages */}
         {errorMessage && (
           <div
             style={{
               padding: "0.75rem 1rem",
               borderRadius: "0.5rem",
-              background: "rgba(245, 158, 11, 0.15)",
-              border: "1px solid rgba(245, 158, 11, 0.4)",
-              color: "#f59e0b",
+              background: isLockedOut ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)",
+              border: `1px solid ${isLockedOut ? "rgba(239, 68, 68, 0.4)" : "rgba(245, 158, 11, 0.4)"}`,
+              color: isLockedOut ? "#ef4444" : "#f59e0b",
               marginBottom: "1.25rem",
               fontSize: "0.85rem",
               textAlign: "center"
             }}
           >
-            {errorMessage}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+              {isLockedOut ? <Clock size={16} /> : <AlertTriangle size={16} />}
+              <span>{errorMessage}</span>
+            </div>
+            {isLockedOut && (
+              <div style={{ marginTop: "0.5rem", fontSize: "1.1rem", fontWeight: 700, fontFamily: "monospace" }}>
+                {formatCountdown(lockoutCountdown)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Attempts remaining warning */}
+        {attemptsRemaining !== null && attemptsRemaining > 0 && attemptsRemaining <= 3 && !isLockedOut && (
+          <div
+            style={{
+              padding: "0.5rem 0.75rem",
+              borderRadius: "0.5rem",
+              background: "rgba(245, 158, 11, 0.08)",
+              border: "1px solid rgba(245, 158, 11, 0.2)",
+              color: "#f59e0b",
+              marginBottom: "1rem",
+              fontSize: "0.78rem",
+              textAlign: "center"
+            }}
+          >
+            ⚠️ {attemptsRemaining} attempt{attemptsRemaining !== 1 ? "s" : ""} remaining before lockout
           </div>
         )}
 
@@ -218,8 +260,10 @@ export const AdminAuthGate = () => {
                 className="admin-input"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="admin@NIYARA.com"
+                placeholder="Enter admin email"
                 required
+                disabled={isLockedOut}
+                autoComplete="email"
               />
             </div>
 
@@ -235,6 +279,8 @@ export const AdminAuthGate = () => {
                   onChange={(e) => setPasswordInput(e.target.value)}
                   placeholder="••••••••"
                   required
+                  disabled={isLockedOut}
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -254,44 +300,39 @@ export const AdminAuthGate = () => {
                 </button>
               </div>
             </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
-              <button
-                type="button"
-                onClick={handleFillDemoCredentials}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--accent-gold)",
-                  fontSize: "0.75rem",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.25rem"
-                }}
-              >
-                <Sparkles size={12} /> Auto-fill Demo Credentials
-              </button>
-            </div>
           </div>
 
           <button
             type="submit"
             className="btn-gold"
+            disabled={isLockedOut || isSubmitting}
             style={{
               width: "100%",
               marginTop: "1.5rem",
-              justifyContent: "center"
+              justifyContent: "center",
+              opacity: isLockedOut || isSubmitting ? 0.5 : 1,
+              cursor: isLockedOut || isSubmitting ? "not-allowed" : "pointer"
             }}
           >
-            <Lock size={16} /> UNLOCK ADMIN PORTAL
+            {isSubmitting ? (
+              <>
+                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> AUTHENTICATING...
+              </>
+            ) : isLockedOut ? (
+              <>
+                <Clock size={16} /> ACCOUNT LOCKED
+              </>
+            ) : (
+              <>
+                <Lock size={16} /> UNLOCK ADMIN PORTAL
+              </>
+            )}
           </button>
         </form>
 
         <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--border-color)", textAlign: "center" }}>
           <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            NIYARA Security Protocol v4.2 • MongoDB Atlas Connected • Port 5174
+            NIYARA Security Protocol v5.0 • JWT Authentication • 4h Token Expiry
           </p>
         </div>
       </div>
