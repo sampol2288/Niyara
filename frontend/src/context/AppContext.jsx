@@ -33,6 +33,11 @@ export const AppProvider = ({ children }) => {
   const setView = (newView) => {
     setViewInternal((prev) => {
       const target = typeof newView === "function" ? newView(prev) : newView;
+      // Clear selectedProduct when navigating away from the product page,
+      // otherwise renderView() keeps showing PDPView instead of the target view.
+      if (target !== "pdp") {
+        setSelectedProduct(null);
+      }
       const targetUrl = target === "home" ? "/" : target === "admin" ? "/admin" : `/${target}`;
       if (typeof window !== "undefined" && window.location.pathname !== targetUrl) {
         try {
@@ -826,6 +831,38 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const authenticateAdmin = (pin, role = "Super Admin") => {
+    if (lockoutTime > Date.now()) {
+      const remainingMin = Math.ceil((lockoutTime - Date.now()) / 60000);
+      return { success: false, message: `Too many failed attempts. Try again in ${remainingMin} minute(s).` };
+    }
+
+    if (pin === adminPin) {
+      setIsAdminAuthenticated(true);
+      setFailedPinAttempts(0);
+      setAdminSession((prev) => ({
+        ...prev,
+        role,
+        authenticatedAt: new Date().toLocaleTimeString()
+      }));
+      logSecurityEvent("ADMIN_PIN_LOGIN_SUCCESS", "INFO", `Authenticated via PIN as ${role}`, adminSession.user, role);
+      showToast(`Admin session unlocked as ${role}.`);
+      refreshAllAdminData();
+      return { success: true, message: "Access Granted" };
+    } else {
+      const newAttempts = failedPinAttempts + 1;
+      setFailedPinAttempts(newAttempts);
+      if (newAttempts >= 5) {
+        const lockUntil = Date.now() + 15 * 60 * 1000;
+        setLockoutTime(lockUntil);
+        logSecurityEvent("ADMIN_PIN_LOCKOUT", "CRITICAL", `Account locked after ${newAttempts} failed PIN attempts`);
+        return { success: false, message: "Too many failed attempts. Account locked for 15 minutes." };
+      }
+      logSecurityEvent("ADMIN_PIN_LOGIN_FAILED", "WARN", `Invalid PIN attempt (${newAttempts}/5)`);
+      return { success: false, message: `Invalid security PIN. ${5 - newAttempts} attempt(s) remaining.` };
+    }
+  };
+
   const lockAdminSession = () => {
     setIsAdminAuthenticated(false);
     logSecurityEvent("ADMIN_SESSION_LOCKED", "INFO", "Session locked by operator request");
@@ -919,6 +956,7 @@ export const AppProvider = ({ children }) => {
         auditLogs,
         clearAuditLogs,
         authenticateAdminWithEmail,
+        authenticateAdmin,
         lockAdminSession,
         updateAdminPinCode,
         logSecurityEvent,
