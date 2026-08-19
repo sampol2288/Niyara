@@ -31,23 +31,21 @@ export const AppProvider = ({ children }) => {
   const [view, setViewInternal] = useState(getInitialView);
 
   const setView = (newView) => {
-    setViewInternal((prev) => {
-      const target = typeof newView === "function" ? newView(prev) : newView;
-      // Clear selectedProduct when navigating away from the product page,
-      // otherwise renderView() keeps showing PDPView instead of the target view.
-      if (target !== "pdp") {
-        setSelectedProduct(null);
+    const target = typeof newView === "function" ? newView(view) : newView;
+    // Clear selectedProduct when navigating away from the product page,
+    // otherwise renderView() keeps showing PDPView instead of the target view.
+    if (target !== "pdp") {
+      setSelectedProduct(null);
+    }
+    setViewInternal(target);
+    const targetUrl = target === "home" ? "/" : target === "admin" ? "/admin" : `/${target}`;
+    if (typeof window !== "undefined" && window.location.pathname !== targetUrl) {
+      try {
+        window.history.pushState({ view: target }, "", targetUrl);
+      } catch (e) {
+        window.location.hash = target === "home" ? "" : target;
       }
-      const targetUrl = target === "home" ? "/" : target === "admin" ? "/admin" : `/${target}`;
-      if (typeof window !== "undefined" && window.location.pathname !== targetUrl) {
-        try {
-          window.history.pushState({ view: target }, "", targetUrl);
-        } catch (e) {
-          window.location.hash = target === "home" ? "" : target;
-        }
-      }
-      return target;
-    });
+    }
   };
 
   useEffect(() => {

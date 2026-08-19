@@ -198,24 +198,27 @@ export const Footer = () => {
             <p>© 2024 NIYARA STUDIO. ALL RIGHTS RESERVED.</p>
             {/* Discreet Secret Admin Lock Portal */}
             <button
+              id="admin-portal-btn"
               onClick={() => {
+                console.log("[Portal] Button clicked, navigating to admin view");
                 setView("admin");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               style={{
                 background: "none",
-                border: "none",
+                border: "1px solid var(--border-light)",
                 color: "var(--text-muted)",
                 cursor: "pointer",
-                padding: "0.2rem",
-                opacity: 0.4,
+                padding: "0.35rem 0.75rem",
+                borderRadius: "4px",
+                opacity: 0.6,
                 transition: "opacity 0.2s"
               }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.4")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
               title="Operator Portal (Ctrl+Shift+A)"
             >
-              <span style={{ fontSize: "0.65rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>• Portal</span>
+              <span style={{ fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>• Portal</span>
             </button>
           </div>
           <div style={{ display: "flex", gap: "2rem", letterSpacing: "0.1em", fontWeight: 500 }}>
