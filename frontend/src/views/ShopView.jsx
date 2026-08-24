@@ -17,9 +17,9 @@ export const ShopView = () => {
   // Filtering Logic
   let filtered = products.filter((p) => {
     if (activeCategory !== "All" && activeCategory !== "Women") {
-      if (p.category !== activeCategory) return false;
+      if (!p.category || p.category.toLowerCase() !== activeCategory.toLowerCase()) return false;
     }
-    if (activeCategory === "Women" && p.gender !== "Women" && p.gender !== "Unisex") return false;
+    if (activeCategory === "Women" && (!p.gender || (p.gender.toLowerCase() !== "women" && p.gender.toLowerCase() !== "unisex"))) return false;
 
     if (selectedSize !== "All" && p.sizes && !p.sizes.includes(selectedSize)) return false;
     if (selectedColor !== "All" && p.colors && !p.colors.some((c) => c.name.toLowerCase().includes(selectedColor.toLowerCase()))) return false;
