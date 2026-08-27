@@ -15,6 +15,7 @@ import reviewRoutes from "./routes/reviews.js";
 import discountRoutes from "./routes/discounts.js";
 import userRoutes from "./routes/users.js";
 import categoryRoutes from "./routes/categories.js";
+import uploadRoutes from "./routes/uploadRoute.js";
 
 import { fileURLToPath } from "url";
 
@@ -155,6 +156,7 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/discounts", discountRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // ─── Health Endpoint ──────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => {

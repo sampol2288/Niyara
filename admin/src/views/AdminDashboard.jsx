@@ -84,6 +84,7 @@ export const AdminDashboard = () => {
     stock: "",
     sku: "",
     image: "",
+    images: [],
     description: "",
     shippingInfo: ""
   });
@@ -107,6 +108,83 @@ export const AdminDashboard = () => {
   const [isAddDiscountModalOpen, setIsAddDiscountModalOpen] = useState(false);
   const [discountForm, setDiscountForm] = useState({ code: "", type: "Percentage", value: "", usageCap: "100", expires: "Dec 31, 2026" });
 
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadingImageIndex, setUploadingImageIndex] = useState(null); // null = category, number = product extra
+
+  const getApiBaseUrl = () => {
+    let baseUrl = (import.meta.env.VITE_API_URL || "").trim().replace(/\/$/, "");
+    if (!baseUrl) {
+      if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        baseUrl = "https://niyara.onrender.com/api";
+      } else {
+        baseUrl = "http://localhost:5000/api";
+      }
+    } else if (!baseUrl.endsWith("/api")) {
+      baseUrl += "/api";
+    }
+    return baseUrl;
+  };
+
+  const uploadToCloudinary = async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await fetch(`${getApiBaseUrl()}/upload`, { method: 'POST', body: formData });
+    return await res.json();
+  };
+
+  // For category cover image (single)
+  const handleCategoryImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const data = await uploadToCloudinary(file);
+      if (data.success) {
+        setCategoryForm(prev => ({ ...prev, image: data.url }));
+        showToast("Cover image uploaded successfully");
+      } else {
+        showToast(data.message || "Upload failed");
+      }
+    } catch (err) {
+      showToast("Error uploading image");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // For product — adds to images[] array, first image also sets image
+  const handleProductImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setIsUploadingImage(true);
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const data = await uploadToCloudinary(file);
+        if (data.success) uploaded.push(data.url);
+      }
+      if (uploaded.length) {
+        setProductForm(prev => {
+          const newImages = [...(prev.images || []), ...uploaded];
+          return { ...prev, images: newImages, image: newImages[0] };
+        });
+        showToast(`${uploaded.length} image(s) uploaded successfully`);
+      }
+    } catch (err) {
+      showToast("Error uploading image(s)");
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveProductImage = (index) => {
+    setProductForm(prev => {
+      const newImages = prev.images.filter((_, i) => i !== index);
+      return { ...prev, images: newImages, image: newImages[0] || "" };
+    });
+  };
+
 
   // KPI calculations
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -127,7 +205,8 @@ export const AdminDashboard = () => {
       sku: productForm.sku || `NYR-${Math.floor(1000 + Math.random() * 9000)}`,
       price: parseFloat(productForm.price) || 0,
       stock: parseInt(productForm.stock) || 0,
-      image: productForm.image || "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop",
+      image: productForm.image || (productForm.images && productForm.images[0]) || "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop",
+      images: productForm.images || [],
       description: productForm.description || "",
       shippingInfo: productForm.shippingInfo || "",
       status: (parseInt(productForm.stock) || 0) > 0 ? "In Stock" : "Out of Stock"
@@ -142,6 +221,7 @@ export const AdminDashboard = () => {
         price: newProdObj.price,
         stock: newProdObj.stock,
         image: newProdObj.image,
+        images: newProdObj.images,
         description: newProdObj.description,
         shippingInfo: newProdObj.shippingInfo
       };
@@ -166,7 +246,7 @@ export const AdminDashboard = () => {
     } finally {
       setIsAddProductModalOpen(false);
       setEditingProduct(null);
-      setProductForm({ title: "", category: "Outerwear", price: "", stock: "", sku: "", image: "", description: "", shippingInfo: "" });
+      setProductForm({ title: "", category: "Outerwear", price: "", stock: "", sku: "", image: "", images: [], description: "", shippingInfo: "" });
     }
   };
 
@@ -1303,8 +1383,30 @@ export const AdminDashboard = () => {
                 <textarea className="admin-input" rows={3} value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} placeholder="Collection details..." />
               </div>
               <div>
-                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>COVER IMAGE URL</label>
-                <input type="text" className="admin-input" value={categoryForm.image} onChange={(e) => setCategoryForm({ ...categoryForm, image: e.target.value })} placeholder="https://..." />
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>COVER IMAGE</label>
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginTop: "0.5rem" }}>
+                  <label htmlFor="cat-img-upload" style={{
+                    display: "inline-flex", alignItems: "center", gap: "0.4rem",
+                    background: "var(--accent-gold)", color: "#000", fontWeight: 700,
+                    fontSize: "0.78rem", padding: "0.5rem 1rem", borderRadius: "6px",
+                    cursor: "pointer", letterSpacing: "0.05em"
+                  }}>
+                    ↑ Upload Image
+                  </label>
+                  <input id="cat-img-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={handleCategoryImageUpload} />
+                  {isUploadingImage && <span style={{ fontSize: "0.75rem", color: "var(--accent-gold)" }}>Uploading...</span>}
+                </div>
+                {categoryForm.image && (
+                  <div style={{ marginTop: "0.75rem", position: "relative", display: "inline-block" }}>
+                    <img src={categoryForm.image} alt="Preview" style={{ width: "90px", height: "90px", objectFit: "cover", borderRadius: "6px", border: "2px solid var(--accent-gold)" }} />
+                    <button type="button" onClick={() => setCategoryForm(prev => ({ ...prev, image: "" }))} style={{
+                      position: "absolute", top: "-6px", right: "-6px", background: "#e53e3e",
+                      border: "none", borderRadius: "50%", width: "20px", height: "20px",
+                      color: "#fff", fontSize: "0.7rem", cursor: "pointer", display: "flex",
+                      alignItems: "center", justifyContent: "center", fontWeight: 700
+                    }}>✕</button>
+                  </div>
+                )}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div>
@@ -1375,8 +1477,60 @@ export const AdminDashboard = () => {
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>IMAGE URL</label>
-                <input type="text" className="admin-input" value={productForm.image} onChange={(e) => setProductForm({ ...productForm, image: e.target.value })} placeholder="https://..." />
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>PRODUCT IMAGES</label>
+                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "0.25rem 0 0.5rem" }}>First image is used as the main product image. You can upload multiple at once.</p>
+                <label htmlFor="prod-img-upload" style={{
+                  display: "inline-flex", alignItems: "center", gap: "0.4rem",
+                  background: "var(--accent-gold)", color: "#000", fontWeight: 700,
+                  fontSize: "0.78rem", padding: "0.5rem 1.1rem", borderRadius: "6px",
+                  cursor: isUploadingImage ? "not-allowed" : "pointer",
+                  letterSpacing: "0.05em", opacity: isUploadingImage ? 0.6 : 1
+                }}>
+                  {isUploadingImage ? "Uploading..." : "↑ Upload Images"}
+                </label>
+                <input
+                  id="prod-img-upload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: "none" }}
+                  disabled={isUploadingImage}
+                  onChange={handleProductImageUpload}
+                />
+                {productForm.images && productForm.images.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", marginTop: "0.75rem" }}>
+                    {productForm.images.map((url, idx) => (
+                      <div key={idx} style={{ position: "relative" }}>
+                        <img
+                          src={url}
+                          alt={`Product ${idx + 1}`}
+                          style={{
+                            width: "72px", height: "72px", objectFit: "cover", borderRadius: "6px",
+                            border: idx === 0 ? "2px solid var(--accent-gold)" : "2px solid rgba(255,255,255,0.15)"
+                          }}
+                        />
+                        {idx === 0 && (
+                          <span style={{
+                            position: "absolute", bottom: 0, left: 0, right: 0,
+                            background: "rgba(197,160,114,0.85)", color: "#000",
+                            fontSize: "0.6rem", fontWeight: 700, textAlign: "center",
+                            borderRadius: "0 0 4px 4px", padding: "1px 0"
+                          }}>MAIN</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProductImage(idx)}
+                          style={{
+                            position: "absolute", top: "-6px", right: "-6px", background: "#e53e3e",
+                            border: "none", borderRadius: "50%", width: "18px", height: "18px",
+                            color: "#fff", fontSize: "0.65rem", cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700
+                          }}
+                        >✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <button type="submit" className="btn-gold" style={{ marginTop: "1rem", justifyContent: "center" }}>
                 SAVE SKU TO MONGODB

@@ -594,6 +594,13 @@ export const AppProvider = ({ children }) => {
   };
 
   const addToCart = (product, color = null, size = null, qty = 1) => {
+    if (!user) {
+      setAuthMode("login");
+      setIsAuthModalOpen(true);
+      showToast("Please sign in or create an account to add items to your cart");
+      return;
+    }
+
     const targetColor = color || (product.colors && product.colors[0]?.name) || "Default";
     const targetSize = size || (product.sizes && product.sizes[0]) || "OS";
 
