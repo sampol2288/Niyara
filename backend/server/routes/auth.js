@@ -582,11 +582,11 @@ router.post("/admin-login", async (req, res) => {
  */
 export const ensureDefaultAdminAccount = async () => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || "admin@niyara.com";
+    const adminEmail = process.env.ADMIN_EMAIL || "niyara2288@gmail.com";
     const existingAdmin = await User.findOne({ email: adminEmail });
     if (!existingAdmin) {
       const salt = await bcrypt.genSalt(12);
-      const defaultPassword = process.env.ADMIN_PASSWORD || "admin123";
+      const defaultPassword = process.env.ADMIN_PASSWORD || "Niyara123$";
       const hashedPassword = await bcrypt.hash(defaultPassword, salt);
       await User.create({
         name: "Julian Vanderveld",
