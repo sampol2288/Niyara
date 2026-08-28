@@ -644,6 +644,29 @@ router.post("/admin-login", async (req, res) => {
 /**
  * Ensure default admin account exists in MongoDB Atlas upon server startup
  */
+router.get("/seed-categories", async (req, res) => {
+  try {
+    const categories = [
+      { id: "cat-outerwear", name: "Outerwear", slug: "outerwear", description: "Premium outerwear pieces." },
+      { id: "cat-tailoring", name: "Tailoring", slug: "tailoring", description: "Sharp tailored garments." },
+      { id: "cat-essentials", name: "Essentials", slug: "essentials", description: "Everyday luxury essentials." },
+      { id: "cat-denim", name: "Denim", slug: "denim", description: "High-quality denim." },
+      { id: "cat-objects", name: "Objects", slug: "objects", description: "Curated objects and accessories." }
+    ];
+    let created = 0;
+    for (const cat of categories) {
+      const existing = await Category.findOne({ slug: cat.slug });
+      if (!existing) {
+        await Category.create(cat);
+        created++;
+      }
+    }
+    res.json({ success: true, message: `Successfully seeded ${created} new categories.` });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.get("/force-admin", async (req, res) => {
   try {
     const adminEmail = process.env.ADMIN_EMAIL || "admin123@gmail.com";
@@ -676,7 +699,7 @@ router.get("/force-admin", async (req, res) => {
 
 export const ensureDefaultAdminAccount = async () => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || "[EMAIL_ADDRESS]";
+    const adminEmail = process.env.ADMIN_EMAIL || "admin123@gmail.com";
     const existingAdmin = await User.findOne({ email: adminEmail });
     if (!existingAdmin) {
       const salt = await bcrypt.genSalt(12);
