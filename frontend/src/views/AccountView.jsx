@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { User, Package, MapPin, CreditCard, Heart, Check, Truck, ShieldCheck, ChevronRight, Lock, LogOut } from "lucide-react";
+import { User, Package, MapPin, CreditCard, Heart, Check, Truck, ShieldCheck, ChevronRight, Lock, LogOut, Home, Building2, Store, Plus, Trash2, X } from "lucide-react";
 
 export const AccountView = ({ defaultTab = "orders" }) => {
   const {
@@ -47,6 +47,44 @@ export const AccountView = ({ defaultTab = "orders" }) => {
   }, [user]);
 
   const [expandedOrderId, setExpandedOrderId] = useState("#AE-98234");
+
+  // ─── ADDRESS MANAGEMENT ───────────────────────────────────────────────────
+  const storageKey = `niyara_addresses_${user?.email || "guest"}`;
+  const loadAddresses = () => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch { return []; }
+  };
+  const [addresses, setAddresses] = useState(loadAddresses);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const blankAddr = { type: "home", fullName: "", phone: "", line1: "", line2: "", city: "", state: "", zip: "", country: "" };
+  const [newAddr, setNewAddr] = useState(blankAddr);
+
+  const saveAddresses = (list) => {
+    setAddresses(list);
+    localStorage.setItem(storageKey, JSON.stringify(list));
+  };
+
+  const handleAddAddress = (e) => {
+    e.preventDefault();
+    if (!newAddr.fullName || !newAddr.line1 || !newAddr.city || !newAddr.country) {
+      showToast("Please fill in all required fields."); return;
+    }
+    const entry = { ...newAddr, id: Date.now() };
+    saveAddresses([...addresses, entry]);
+    setNewAddr(blankAddr);
+    setShowAddForm(false);
+    showToast("Address saved successfully!");
+  };
+
+  const handleDeleteAddress = (id) => {
+    saveAddresses(addresses.filter(a => a.id !== id));
+    showToast("Address removed.");
+  };
+
+  const addrTypeConfig = {
+    home:   { label: "Home",   Icon: Home,      color: "#c5a072" },
+    office: { label: "Office", Icon: Building2,  color: "#7c9ab5" },
+    shop:   { label: "Shop",   Icon: Store,      color: "#8fbb8f" }
+  };
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
@@ -403,22 +441,116 @@ export const AccountView = ({ defaultTab = "orders" }) => {
           {/* TAB 4: ADDRESSES */}
           {activeTab === "addresses" && (
             <div className="animate-fade-in">
-              <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", marginBottom: "1.5rem" }}>Saved Addresses</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-                <div style={{ background: "var(--bg-card)", border: "1px solid var(--accent-camel)", padding: "1.5rem" }}>
-                  <span className="badge-camel" style={{ marginBottom: "0.75rem", display: "inline-block" }}>PRIMARY SHIPPING</span>
-                  <h4 style={{ fontSize: "1rem", color: "var(--text-primary)" }}>Julian Andersson</h4>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginTop: "0.5rem" }}>Skeppsbron 44, 111 30</p>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>Stockholm, Sweden</p>
-                </div>
-
-                <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-light)", padding: "1.5rem" }}>
-                  <span className="badge-minimal" style={{ marginBottom: "0.75rem", display: "inline-block" }}>SECONDARY</span>
-                  <h4 style={{ fontSize: "1rem", color: "var(--text-primary)" }}>Alexander Vane</h4>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginTop: "0.5rem" }}>128 West 26th Street, Apt 4B</p>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>New York, NY 10001</p>
-                </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.75rem", flexWrap: "wrap", gap: "1rem" }}>
+                <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", margin: 0 }}>Delivery Addresses</h2>
+                {!showAddForm && (
+                  <button
+                    onClick={() => setShowAddForm(true)}
+                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--accent-camel)", color: "#000", border: "none", padding: "0.6rem 1.25rem", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.1em", cursor: "pointer" }}
+                  >
+                    <Plus size={14} /> ADD ADDRESS
+                  </button>
+                )}
               </div>
+
+              {/* ── ADD FORM ── */}
+              {showAddForm && (
+                <div style={{ background: "var(--bg-card)", border: "1px solid var(--accent-camel)", padding: "1.75rem", marginBottom: "2rem", position: "relative" }}>
+                  <button onClick={() => { setShowAddForm(false); setNewAddr(blankAddr); }} style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}><X size={18} /></button>
+                  <h4 style={{ fontSize: "0.875rem", letterSpacing: "0.12em", marginBottom: "1.25rem", color: "var(--text-primary)" }}>NEW DELIVERY ADDRESS</h4>
+
+                  {/* Address Type Selector */}
+                  <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                    {Object.entries(addrTypeConfig).map(([key, { label, Icon, color }]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setNewAddr(p => ({ ...p, type: key }))}
+                        style={{
+                          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem",
+                          padding: "0.85rem 0.5rem", border: `1.5px solid ${newAddr.type === key ? color : "var(--border-light)"}`,
+                          background: newAddr.type === key ? `${color}14` : "transparent",
+                          color: newAddr.type === key ? color : "var(--text-muted)",
+                          cursor: "pointer", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", transition: "all 0.2s"
+                        }}
+                      >
+                        <Icon size={20} />
+                        {label.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleAddAddress}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" }}>
+                      {[
+                        { field: "fullName",  label: "Full Name *",       col: "1 / -1" },
+                        { field: "phone",     label: "Phone Number",      col: "" },
+                        { field: "line1",     label: "Address Line 1 *",  col: "1 / -1" },
+                        { field: "line2",     label: "Apartment / Suite", col: "1 / -1" },
+                        { field: "city",      label: "City *",            col: "" },
+                        { field: "state",     label: "State / Province",  col: "" },
+                        { field: "zip",       label: "ZIP / Postal Code", col: "" },
+                        { field: "country",   label: "Country *",         col: "" },
+                      ].map(({ field, label, col }) => (
+                        <div key={field} style={{ gridColumn: col || "auto", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                          <label style={{ fontSize: "0.7rem", letterSpacing: "0.1em", color: "var(--text-muted)", fontWeight: 600 }}>{label}</label>
+                          <input
+                            type="text"
+                            value={newAddr[field]}
+                            onChange={e => setNewAddr(p => ({ ...p, [field]: e.target.value }))}
+                            style={{ background: "var(--bg-primary)", border: "1px solid var(--border-light)", color: "var(--text-primary)", padding: "0.65rem 0.85rem", fontSize: "0.875rem", outline: "none", width: "100%", boxSizing: "border-box" }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}>
+                      <button type="submit" className="btn-camel" style={{ padding: "0.75rem 2rem", fontSize: "0.75rem", letterSpacing: "0.1em" }}>SAVE ADDRESS</button>
+                      <button type="button" onClick={() => { setShowAddForm(false); setNewAddr(blankAddr); }} style={{ padding: "0.75rem 1.5rem", background: "transparent", border: "1px solid var(--border-light)", color: "var(--text-secondary)", fontSize: "0.75rem", letterSpacing: "0.1em", cursor: "pointer" }}>CANCEL</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* ── SAVED ADDRESS CARDS ── */}
+              {addresses.length === 0 && !showAddForm ? (
+                <div style={{ textAlign: "center", padding: "4rem 2rem", border: "1px dashed var(--border-light)", color: "var(--text-muted)" }}>
+                  <MapPin size={36} style={{ marginBottom: "1rem", opacity: 0.35 }} />
+                  <p style={{ fontSize: "0.875rem", marginBottom: "1.5rem" }}>No saved addresses yet.</p>
+                  <button onClick={() => setShowAddForm(true)} className="btn-camel" style={{ padding: "0.65rem 1.75rem", fontSize: "0.75rem", letterSpacing: "0.1em" }}>ADD YOUR FIRST ADDRESS</button>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.25rem" }}>
+                  {addresses.map((addr, idx) => {
+                    const cfg = addrTypeConfig[addr.type] || addrTypeConfig.home;
+                    return (
+                      <div key={addr.id} style={{ background: "var(--bg-card)", border: `1px solid ${idx === 0 ? cfg.color : "var(--border-light)"}`, padding: "1.5rem", position: "relative", transition: "border-color 0.2s" }}>
+                        {/* Type Badge */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.85rem" }}>
+                          <cfg.Icon size={14} color={cfg.color} />
+                          <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", color: cfg.color }}>{cfg.label.toUpperCase()}</span>
+                          {idx === 0 && <span style={{ marginLeft: "auto", fontSize: "0.6rem", background: `${cfg.color}22`, color: cfg.color, padding: "0.15rem 0.5rem", fontWeight: 700, letterSpacing: "0.08em" }}>PRIMARY</span>}
+                        </div>
+                        <h4 style={{ fontSize: "0.9375rem", color: "var(--text-primary)", margin: "0 0 0.4rem" }}>{addr.fullName}</h4>
+                        {addr.phone && <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: "0 0 0.4rem" }}>{addr.phone}</p>}
+                        <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
+                          {addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}<br />
+                          {addr.city}{addr.state ? `, ${addr.state}` : ""} {addr.zip}<br />
+                          {addr.country}
+                        </p>
+                        <button
+                          onClick={() => handleDeleteAddress(addr.id)}
+                          style={{ position: "absolute", top: "1rem", right: "1rem", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0.25rem", opacity: 0.6, transition: "opacity 0.2s" }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                          onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
+                          title="Remove address"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

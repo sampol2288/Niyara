@@ -46,14 +46,14 @@ export const AdminProvider = ({ children }) => {
     return saved
       ? JSON.parse(saved)
       : [
-          {
-            id: 1,
-            event: "Admin Portal Boot",
-            severity: "INFO",
-            timestamp: new Date().toLocaleTimeString() + " - " + new Date().toLocaleDateString(),
-            details: "Archival Command Console initialized in standalone mode"
-          }
-        ];
+        {
+          id: 1,
+          event: "Admin Portal Boot",
+          severity: "INFO",
+          timestamp: new Date().toLocaleTimeString() + " - " + new Date().toLocaleDateString(),
+          details: "Archival Command Console initialized in standalone mode"
+        }
+      ];
   });
 
   const logSecurityEvent = (event, severity = "INFO", details = "") => {
@@ -99,11 +99,11 @@ export const AdminProvider = ({ children }) => {
           const session = savedSession
             ? JSON.parse(savedSession)
             : {
-                role: result.user.role,
-                name: result.user.name,
-                email: result.user.email,
-                authenticatedAt: new Date().toISOString()
-              };
+              role: result.user.role,
+              name: result.user.name,
+              email: result.user.email,
+              authenticatedAt: new Date().toISOString()
+            };
           setAdminSession(session);
           setIsAdminAuthenticated(true);
         } else {
@@ -181,7 +181,7 @@ export const AdminProvider = ({ children }) => {
     };
   }, [isAdminAuthenticated, resetIdleTimer]);
 
-  // ─── Admin Email + Password Authentication ──────────────────────────────────
+  // ───  + Password Authentication ──────────────────────────────────
   const authenticateAdminWithEmail = async (email, password) => {
     try {
       const result = await adminApi.login(email.trim(), password);

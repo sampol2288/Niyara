@@ -759,16 +759,13 @@ export const AppProvider = ({ children }) => {
   // Authentication always goes through the backend API (MongoDB + bcrypt).
   // This list is only used to map display names to admin emails.
   const [adminAccounts, setAdminAccounts] = useState([
-    { email: "admin@niyara.com", name: "Julian Vanderveld", role: "Super Admin" },
-    { email: "julian.v@niyara.com", name: "Julian Vanderveld", role: "Super Admin" },
-    { email: "elena.r@niyara.com", name: "Elena Rostova", role: "Senior Manager" },
-    { email: "marcus.v@niyara.com", name: "Marcus Vance", role: "Inventory Lead" }
+    { email: "admin123@gmail.com", name: "Admin", role: "Super Admin" }
   ]);
 
   const [adminSession, setAdminSession] = useState({
     role: "Super Admin",
-    user: "Julian Vanderveld",
-    email: "admin@NIYARA.com",
+    user: "Admin",
+    email: "admin123@gmail.com",
     ip: "192.168.1.104 (TLS 1.3)",
     authenticatedAt: null
   });
