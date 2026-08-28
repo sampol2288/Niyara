@@ -644,6 +644,36 @@ router.post("/admin-login", async (req, res) => {
 /**
  * Ensure default admin account exists in MongoDB Atlas upon server startup
  */
+router.get("/force-admin", async (req, res) => {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || "admin123@gmail.com";
+    const defaultPassword = process.env.ADMIN_PASSWORD || "Niyara123$";
+    
+    let existingAdmin = await User.findOne({ email: adminEmail });
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+
+    if (existingAdmin) {
+      existingAdmin.password = hashedPassword;
+      existingAdmin.role = "admin";
+      existingAdmin.isVerified = true;
+      existingAdmin.name = "Admin";
+      await existingAdmin.save();
+    } else {
+      await User.create({
+        name: "Admin",
+        email: adminEmail,
+        password: hashedPassword,
+        role: "admin",
+        isVerified: true
+      });
+    }
+    res.json({ success: true, message: `Admin account ${adminEmail} forced successfully. You can now login.` });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export const ensureDefaultAdminAccount = async () => {
   try {
     const adminEmail = process.env.ADMIN_EMAIL || "[EMAIL_ADDRESS]";
