@@ -93,10 +93,22 @@ export const authApi = {
   },
 
   /**
-   * Register a new user account.
+   * Register a new user account (called after OTP verification).
    */
   register: async (userData) => {
     const res = await apiRequest("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(userData)
+    });
+    return res;
+  },
+
+  /**
+   * Register a new user account directly without OTP verification.
+   * Used when SMTP/email is not configured. Stores user in MongoDB immediately.
+   */
+  registerDirect: async (userData) => {
+    const res = await apiRequest("/auth/register-direct", {
       method: "POST",
       body: JSON.stringify(userData)
     });

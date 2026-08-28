@@ -423,6 +423,31 @@ export const AppProvider = ({ children }) => {
     return { success: true };
   };
 
+  // Direct signup — registers user in MongoDB without OTP email verification.
+  // Used when SMTP is not configured on the backend.
+  const signupDirect = async (name, email, password) => {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check locally first to give a fast response
+    const exists = registeredUsers.some((u) => u.email.toLowerCase() === cleanEmail);
+    if (exists) {
+      return { success: false, error: "An account with this email address already exists." };
+    }
+
+    const apiResult = await authApi.registerDirect({ name, email: cleanEmail, password });
+
+    if (!apiResult.success) {
+      return { success: false, error: apiResult.error || "Registration failed. Please try again." };
+    }
+
+    const createdUser = apiResult.user;
+    const updatedList = [...registeredUsers, createdUser];
+    updateRegisteredUsers(updatedList);
+    setUser(createdUser, apiResult.token);
+    showToast(`Welcome, ${createdUser.name}! Your account has been created.`);
+    return { success: true, user: createdUser };
+  };
+
   const startResetOtp = async (email) => {
     const cleanEmail = email.trim().toLowerCase();
 
@@ -921,6 +946,7 @@ export const AppProvider = ({ children }) => {
         loginUser,
         loginWithGoogle,
         startSignupOtp,
+        signupDirect,
         startResetOtp,
         verifyOtpCode,
         completePasswordReset,

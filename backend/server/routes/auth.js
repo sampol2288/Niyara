@@ -264,6 +264,7 @@ router.post("/verify-otp", (req, res) => {
 });
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
+// Used after OTP verification — called by the frontend once OTP is confirmed
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -316,6 +317,69 @@ router.post("/register", async (req, res) => {
     });
   } catch (error) {
     console.error("[Register Error]:", error);
+    return res.status(500).json({ success: false, error: "Server error during registration." });
+  }
+});
+
+// ─── POST /api/auth/register-direct ──────────────────────────────────────────
+// Direct registration without OTP — used when email/SMTP is not configured.
+// Stores user in MongoDB immediately after form validation.
+router.post("/register-direct", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: "Name, email, and password are required." });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: "Password must be at least 6 characters." });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ success: false, error: "Invalid email address format." });
+    }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: "An account with this email address already exists." });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const user = await User.create({
+      name: name.trim(),
+      email: cleanEmail,
+      password: hashedPassword,
+      role: "member",
+      isVerified: true
+    });
+
+    const token = generateJWT(user);
+    console.log(`[Register Direct] New user created: ${cleanEmail}`);
+
+    return res.status(201).json({
+      success: true,
+      message: "Account created successfully.",
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        avatar: user.avatar,
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error("[Register Direct Error]:", error);
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, error: "An account with this email address already exists." });
+    }
     return res.status(500).json({ success: false, error: "Server error during registration." });
   }
 });
@@ -582,7 +646,7 @@ router.post("/admin-login", async (req, res) => {
  */
 export const ensureDefaultAdminAccount = async () => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || "niyara2288@gmail.com";
+    const adminEmail = process.env.ADMIN_EMAIL || "[EMAIL_ADDRESS]";
     const existingAdmin = await User.findOne({ email: adminEmail });
     if (!existingAdmin) {
       const salt = await bcrypt.genSalt(12);

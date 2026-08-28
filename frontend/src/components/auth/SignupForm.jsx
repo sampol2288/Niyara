@@ -3,8 +3,8 @@ import { User, Mail, Lock, ArrowRight } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { inputStyle, iconStyle } from "./styles";
 
-export const SignupForm = ({ setAuthMode, setIsLoading, isLoading }) => {
-  const { startSignupOtp, showToast } = useApp();
+export const SignupForm = ({ setAuthMode, setIsLoading, isLoading, setIsAuthModalOpen }) => {
+  const { signupDirect, showToast } = useApp();
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
 
   const handleChange = (e) => {
@@ -14,15 +14,18 @@ export const SignupForm = ({ setAuthMode, setIsLoading, isLoading }) => {
   const handleSignup = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.password) return showToast("Please fill in all fields.");
-    
+    if (formData.password.length < 6) return showToast("Password must be at least 6 characters.");
+
     setIsLoading(true);
-    const res = await startSignupOtp(formData.name, formData.email, formData.password);
+    const res = await signupDirect(formData.name, formData.email, formData.password);
     setIsLoading(false);
-    
+
     if (res.success) {
-      setAuthMode("otp");
+      // Close modal and return to shop — user is now logged in
+      if (setIsAuthModalOpen) setIsAuthModalOpen(false);
+      setAuthMode("login");
     } else {
-      showToast(res.error || "Signup failed");
+      showToast(res.error || "Signup failed. Please try again.");
     }
   };
 
@@ -40,10 +43,10 @@ export const SignupForm = ({ setAuthMode, setIsLoading, isLoading }) => {
         </div>
         <div style={{ position: "relative" }}>
           <Lock size={16} style={iconStyle} />
-          <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Password" required style={inputStyle} />
+          <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Password (min. 6 characters)" required style={inputStyle} />
         </div>
         <button type="submit" className="btn-camel" disabled={isLoading} style={{ width: "100%", padding: "0.85rem", marginTop: "1rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}>
-          {isLoading ? "CREATING..." : <>CREATE ACCOUNT <ArrowRight size={16} /></>}
+          {isLoading ? "CREATING ACCOUNT..." : <>"CREATE ACCOUNT" <ArrowRight size={16} /></>}
         </button>
       </form>
       <div style={{ marginTop: "2rem", textAlign: "center", fontSize: "0.8rem", color: "var(--text-secondary)" }}>

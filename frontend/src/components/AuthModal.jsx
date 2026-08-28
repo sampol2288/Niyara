@@ -66,7 +66,7 @@ export const AuthModal = () => {
         )}
 
         {authMode === "signup" && (
-          <SignupForm setAuthMode={setAuthMode} setIsLoading={setIsLoading} isLoading={isLoading} />
+          <SignupForm setAuthMode={setAuthMode} setIsLoading={setIsLoading} isLoading={isLoading} setIsAuthModalOpen={setIsAuthModalOpen} />
         )}
 
         {authMode === "otp" && (
