@@ -43,20 +43,13 @@ export const AdminProvider = ({ children }) => {
 
   const [auditLogs, setAuditLogs] = useState(() => {
     const saved = localStorage.getItem("niyara_admin_audit_logs");
-    return saved
-      ? JSON.parse(saved)
-      : [
-        {
-          id: 1,
-          event: "Admin Portal Boot",
-          severity: "INFO",
-          timestamp: new Date().toLocaleTimeString() + " - " + new Date().toLocaleDateString(),
-          details: "Archival Command Console initialized in standalone mode"
-        }
-      ];
+    let logs = saved ? JSON.parse(saved) : [];
+    logs = logs.filter(log => log.event === "Admin Login Success");
+    return logs;
   });
 
   const logSecurityEvent = (event, severity = "INFO", details = "") => {
+    if (event !== "Admin Login Success") return;
     const newLog = {
       id: Date.now(),
       event,
@@ -78,12 +71,17 @@ export const AdminProvider = ({ children }) => {
   };
 
   // ─── JWT Session Validation on App Load ─────────────────────────────────────
-  // Immediately validates the stored JWT token on mount. If the token is
-  // expired, invalid, or the user is no longer an admin, auth state is cleared.
+  // Validates stored JWT token on mount. Stored in sessionStorage so closing the
+  // tab immediately logs out the admin. Legacy localStorage keys are cleaned up.
   useEffect(() => {
     const validateSession = async () => {
-      const storedAuth = localStorage.getItem("niyara_admin_authenticated");
-      const storedToken = localStorage.getItem("niyara_admin_jwt");
+      // Clear legacy localStorage admin tokens so tab closure forces re-auth
+      localStorage.removeItem("niyara_admin_authenticated");
+      localStorage.removeItem("niyara_admin_jwt");
+      localStorage.removeItem("niyara_admin_session");
+
+      const storedAuth = sessionStorage.getItem("niyara_admin_authenticated");
+      const storedToken = sessionStorage.getItem("niyara_admin_jwt");
 
       if (storedAuth !== "true" || !storedToken) {
         setIsAdminAuthenticated(false);
@@ -95,7 +93,7 @@ export const AdminProvider = ({ children }) => {
         const result = await adminApi.verifySession();
 
         if (result.success && result.user && result.user.role === "admin") {
-          const savedSession = localStorage.getItem("niyara_admin_session");
+          const savedSession = sessionStorage.getItem("niyara_admin_session");
           const session = savedSession
             ? JSON.parse(savedSession)
             : {
@@ -108,6 +106,9 @@ export const AdminProvider = ({ children }) => {
           setIsAdminAuthenticated(true);
         } else {
           // Token valid but user is not admin, or token invalid
+          sessionStorage.removeItem("niyara_admin_authenticated");
+          sessionStorage.removeItem("niyara_admin_jwt");
+          sessionStorage.removeItem("niyara_admin_session");
           localStorage.removeItem("niyara_admin_authenticated");
           localStorage.removeItem("niyara_admin_jwt");
           localStorage.removeItem("niyara_admin_session");
@@ -119,9 +120,9 @@ export const AdminProvider = ({ children }) => {
           }
         }
       } catch (err) {
-        // Network error — allow offline access if token exists (graceful degradation)
+        // Network error — allow offline access if token exists in session
         console.warn("[Session Validation] Could not reach server:", err.message);
-        const savedSession = localStorage.getItem("niyara_admin_session");
+        const savedSession = sessionStorage.getItem("niyara_admin_session");
         if (savedSession) {
           setAdminSession(JSON.parse(savedSession));
           setIsAdminAuthenticated(true);
@@ -136,6 +137,7 @@ export const AdminProvider = ({ children }) => {
 
   // ─── Idle Timeout System ────────────────────────────────────────────────────
   // Auto-locks the admin session after 30 minutes of no user activity.
+  // Closing the tab immediately terminates the session via sessionStorage.
   const idleTimerRef = useRef(null);
 
   const resetIdleTimer = useCallback(() => {
@@ -145,6 +147,9 @@ export const AdminProvider = ({ children }) => {
     idleTimerRef.current = setTimeout(() => {
       if (isAdminAuthenticated) {
         setIsAdminAuthenticated(false);
+        sessionStorage.removeItem("niyara_admin_authenticated");
+        sessionStorage.removeItem("niyara_admin_jwt");
+        sessionStorage.removeItem("niyara_admin_session");
         localStorage.removeItem("niyara_admin_authenticated");
         localStorage.removeItem("niyara_admin_jwt");
         localStorage.removeItem("niyara_admin_session");
@@ -181,7 +186,7 @@ export const AdminProvider = ({ children }) => {
     };
   }, [isAdminAuthenticated, resetIdleTimer]);
 
-  // ───  + Password Authentication ──────────────────────────────────
+  // ─── Email + Password Authentication ──────────────────────────────────
   const authenticateAdminWithEmail = async (email, password) => {
     try {
       const result = await adminApi.login(email.trim(), password);
@@ -195,9 +200,12 @@ export const AdminProvider = ({ children }) => {
         };
         setIsAdminAuthenticated(true);
         setAdminSession(session);
-        localStorage.setItem("niyara_admin_authenticated", "true");
-        localStorage.setItem("niyara_admin_session", JSON.stringify(session));
-        localStorage.setItem("niyara_admin_jwt", result.token);
+        sessionStorage.setItem("niyara_admin_authenticated", "true");
+        sessionStorage.setItem("niyara_admin_session", JSON.stringify(session));
+        sessionStorage.setItem("niyara_admin_jwt", result.token);
+        localStorage.removeItem("niyara_admin_authenticated");
+        localStorage.removeItem("niyara_admin_session");
+        localStorage.removeItem("niyara_admin_jwt");
         logSecurityEvent("Admin Login Success", "INFO", `Authenticated as ${result.user.name} (${result.user.email})`);
         showToast(`Welcome back, ${result.user.name}!`, "success");
         return { success: true };
@@ -227,6 +235,9 @@ export const AdminProvider = ({ children }) => {
 
   const lockAdminSession = () => {
     setIsAdminAuthenticated(false);
+    sessionStorage.removeItem("niyara_admin_authenticated");
+    sessionStorage.removeItem("niyara_admin_jwt");
+    sessionStorage.removeItem("niyara_admin_session");
     localStorage.removeItem("niyara_admin_authenticated");
     localStorage.removeItem("niyara_admin_jwt");
     localStorage.removeItem("niyara_admin_session");
@@ -238,6 +249,12 @@ export const AdminProvider = ({ children }) => {
   useEffect(() => {
     const handleUnauthorized = () => {
       setIsAdminAuthenticated(false);
+      sessionStorage.removeItem("niyara_admin_authenticated");
+      sessionStorage.removeItem("niyara_admin_jwt");
+      sessionStorage.removeItem("niyara_admin_session");
+      localStorage.removeItem("niyara_admin_authenticated");
+      localStorage.removeItem("niyara_admin_jwt");
+      localStorage.removeItem("niyara_admin_session");
       logSecurityEvent("Session Expired", "WARN", "Admin JWT token expired — re-authentication required");
       showToast("Session expired. Please log in again.", "error");
     };

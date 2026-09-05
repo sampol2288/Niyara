@@ -25,6 +25,8 @@ const API_BASE = getApiBase();
 const getAdminToken = () => {
   if (typeof window === "undefined") return null;
   return (
+    sessionStorage.getItem("niyara_admin_jwt") ||
+    sessionStorage.getItem("niyara_jwt_token") ||
     localStorage.getItem("niyara_admin_jwt") ||
     localStorage.getItem("niyara_jwt_token") ||
     null
@@ -52,7 +54,10 @@ const apiRequest = async (endpoint, options = {}) => {
     const res = await fetch(primaryUrl, options);
 
     if (res.status === 401 || res.status === 403) {
-      // Token expired or unauthorized — clear stored auth
+      // Token expired or unauthorized — clear stored auth from session and local storage
+      sessionStorage.removeItem("niyara_admin_jwt");
+      sessionStorage.removeItem("niyara_admin_authenticated");
+      sessionStorage.removeItem("niyara_admin_session");
       localStorage.removeItem("niyara_admin_jwt");
       localStorage.removeItem("niyara_admin_authenticated");
       localStorage.removeItem("niyara_admin_session");
@@ -70,6 +75,9 @@ const apiRequest = async (endpoint, options = {}) => {
         try {
           const localRes = await fetch(`${localBase}${endpoint}`, options);
           if (localRes.status === 401 || localRes.status === 403) {
+            sessionStorage.removeItem("niyara_admin_jwt");
+            sessionStorage.removeItem("niyara_admin_authenticated");
+            sessionStorage.removeItem("niyara_admin_session");
             localStorage.removeItem("niyara_admin_jwt");
             localStorage.removeItem("niyara_admin_authenticated");
             localStorage.removeItem("niyara_admin_session");

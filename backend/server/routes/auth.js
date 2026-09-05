@@ -650,8 +650,7 @@ router.get("/seed-categories", async (req, res) => {
       { id: "cat-outerwear", name: "Outerwear", slug: "outerwear", description: "Premium outerwear pieces." },
       { id: "cat-tailoring", name: "Tailoring", slug: "tailoring", description: "Sharp tailored garments." },
       { id: "cat-essentials", name: "Essentials", slug: "essentials", description: "Everyday luxury essentials." },
-      { id: "cat-denim", name: "Denim", slug: "denim", description: "High-quality denim." },
-      { id: "cat-objects", name: "Objects", slug: "objects", description: "Curated objects and accessories." }
+      { id: "cat-denim", name: "Denim", slug: "denim", description: "High-quality denim." }
     ];
     let created = 0;
     for (const cat of categories) {

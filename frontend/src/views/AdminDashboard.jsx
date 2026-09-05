@@ -76,7 +76,7 @@ export const AdminDashboard = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   // Form Input States
-  const [prodForm, setProdForm] = useState({ title: "", category: "Outerwear", price: "", stock: 10, sku: "", image: "", description: "" });
+  const [prodForm, setProdForm] = useState({ title: "", category: "Outerwear", price: "", stock: 10, sku: "", image: "", description: "", materials: "", shippingInfo: "" });
   const [catForm, setCatForm] = useState({ name: "", description: "", image: "" });
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "member", phone: "" });
   const [discForm, setDiscForm] = useState({ code: "", type: "Percentage", value: 10, usageCap: 100, expires: "Dec 31, 2026" });
@@ -104,7 +104,7 @@ export const AdminDashboard = () => {
     if (res.success) {
       showToast("Product SKU saved to MongoDB Atlas!");
       setIsProductModalOpen(false);
-      setProdForm({ title: "", category: "Outerwear", price: "", stock: 10, sku: "", image: "", description: "" });
+      setProdForm({ title: "", category: "Outerwear", price: "", stock: 10, sku: "", image: "", description: "", materials: "", shippingInfo: "" });
       fetchProducts();
     } else {
       showToast(res.error || "Failed to save product SKU.");
@@ -457,6 +457,25 @@ export const AdminDashboard = () => {
                   <input type="number" value={prodForm.stock} onChange={(e) => setProdForm({ ...prodForm, stock: e.target.value })} required style={{ width: "100%", padding: "0.65rem", background: isLight ? "#f4f4f5" : "#09090b", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "4px", color: "inherit" }} />
                 </div>
               </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.25rem" }}>DESCRIPTION</label>
+                <textarea rows={3} value={prodForm.description} onChange={(e) => setProdForm({ ...prodForm, description: e.target.value })} placeholder="Premium quality garment crafted with attention to detail..." style={{ width: "100%", padding: "0.65rem", background: isLight ? "#f4f4f5" : "#09090b", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "4px", color: "inherit", resize: "vertical" }} />
+              </div>
+
+              {/* Materials & Care */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.25rem" }}>MATERIALS & CARE</label>
+                <textarea rows={2} value={prodForm.materials} onChange={(e) => setProdForm({ ...prodForm, materials: e.target.value })} placeholder="100% Italian Wool, Silk Lining, Dry Clean Only" style={{ width: "100%", padding: "0.65rem", background: isLight ? "#f4f4f5" : "#09090b", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "4px", color: "inherit", resize: "vertical" }} />
+              </div>
+
+              {/* Shipping & Returns */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.25rem" }}>SHIPPING & RETURNS</label>
+                <textarea rows={2} value={prodForm.shippingInfo} onChange={(e) => setProdForm({ ...prodForm, shippingInfo: e.target.value })} placeholder="Free shipping on orders over $200. 30-day returns accepted..." style={{ width: "100%", padding: "0.65rem", background: isLight ? "#f4f4f5" : "#09090b", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "4px", color: "inherit", resize: "vertical" }} />
+              </div>
+
               <div>
                 <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.25rem" }}>IMAGE URL</label>
                 <input type="text" value={prodForm.image} onChange={(e) => setProdForm({ ...prodForm, image: e.target.value })} placeholder="https://..." style={{ width: "100%", padding: "0.65rem", background: isLight ? "#f4f4f5" : "#09090b", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "4px", color: "inherit" }} />

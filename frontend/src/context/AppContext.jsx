@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { authApi } from "../api/authApi";
 import { createMockJWTToken, decodeJWT, isJWTExpired, getJWTBearerHeader } from "../utils/jwt";
 
@@ -179,7 +179,7 @@ export const AppProvider = ({ children }) => {
     try {
       const API_BASE = getApiBaseUrl();
       const headers = { "Content-Type": "application/json" };
-      const token = jwtToken || localStorage.getItem("niyara_jwt_token");
+      const token = jwtToken || (typeof window !== "undefined" ? (sessionStorage.getItem("niyara_jwt_token") || localStorage.getItem("niyara_jwt_token")) : null);
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${API_BASE}/orders`, { headers });
       const data = await res.json();
@@ -195,7 +195,7 @@ export const AppProvider = ({ children }) => {
     try {
       const API_BASE = getApiBaseUrl();
       const headers = { "Content-Type": "application/json" };
-      const token = jwtToken || localStorage.getItem("niyara_jwt_token");
+      const token = jwtToken || (typeof window !== "undefined" ? (sessionStorage.getItem("niyara_jwt_token") || localStorage.getItem("niyara_jwt_token")) : null);
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${API_BASE}/users`, { headers });
       const data = await res.json();
@@ -211,7 +211,7 @@ export const AppProvider = ({ children }) => {
     try {
       const API_BASE = getApiBaseUrl();
       const headers = { "Content-Type": "application/json" };
-      const token = jwtToken || localStorage.getItem("niyara_jwt_token");
+      const token = jwtToken || (typeof window !== "undefined" ? (sessionStorage.getItem("niyara_jwt_token") || localStorage.getItem("niyara_jwt_token")) : null);
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${API_BASE}/discounts`, { headers });
       const data = await res.json();
@@ -267,17 +267,23 @@ export const AppProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
 
   // --- AUTHENTICATION, JWT & MONGO DB USER MANAGEMENT ---
+  // User session is stored in sessionStorage so closing the tab immediately logs out the user.
+  // Legacy localStorage keys are cleaned up to prevent lingering persistent sessions.
   const DEFAULT_USERS = [];
 
   const getInitialUser = () => {
     if (typeof window === "undefined") return null;
     try {
-      const stored = localStorage.getItem("niyara_active_user");
+      // Clean up legacy persistent localStorage auth
+      localStorage.removeItem("niyara_active_user");
+      localStorage.removeItem("niyara_jwt_token");
+
+      const stored = sessionStorage.getItem("niyara_active_user");
       if (!stored || stored === "null") return null;
       const parsed = JSON.parse(stored);
       if (parsed?.email === "julian.v@aether.com" || parsed?.email === "elena.r@niyara.com") {
-        localStorage.removeItem("niyara_active_user");
-        localStorage.removeItem("niyara_jwt_token");
+        sessionStorage.removeItem("niyara_active_user");
+        sessionStorage.removeItem("niyara_jwt_token");
         return null;
       }
       return parsed;
@@ -289,7 +295,9 @@ export const AppProvider = ({ children }) => {
   const getInitialToken = () => {
     if (typeof window === "undefined") return null;
     try {
-      const token = localStorage.getItem("niyara_jwt_token");
+      localStorage.removeItem("niyara_jwt_token");
+
+      const token = sessionStorage.getItem("niyara_jwt_token");
       if (token && token !== "null" && !isJWTExpired(token)) {
         return token;
       }
@@ -340,10 +348,11 @@ export const AppProvider = ({ children }) => {
     setJwtTokenInternal(newToken);
     if (typeof window !== "undefined") {
       if (newToken) {
-        localStorage.setItem("niyara_jwt_token", newToken);
+        sessionStorage.setItem("niyara_jwt_token", newToken);
       } else {
-        localStorage.removeItem("niyara_jwt_token");
+        sessionStorage.removeItem("niyara_jwt_token");
       }
+      localStorage.removeItem("niyara_jwt_token");
     }
   };
 
@@ -351,10 +360,11 @@ export const AppProvider = ({ children }) => {
     setUserInternal(newUser);
     if (typeof window !== "undefined") {
       if (newUser) {
-        localStorage.setItem("niyara_active_user", JSON.stringify(newUser));
+        sessionStorage.setItem("niyara_active_user", JSON.stringify(newUser));
       } else {
-        localStorage.setItem("niyara_active_user", "null");
+        sessionStorage.removeItem("niyara_active_user");
       }
+      localStorage.removeItem("niyara_active_user");
     }
     if (token !== undefined) {
       setJwtToken(token);
@@ -536,8 +546,57 @@ export const AppProvider = ({ children }) => {
 
   const logoutUser = () => {
     setUser(null, null);
-    showToast("Signed out. JWT session invalidated.");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("niyara_active_user");
+      sessionStorage.removeItem("niyara_jwt_token");
+      localStorage.removeItem("niyara_active_user");
+      localStorage.removeItem("niyara_jwt_token");
+    }
+    showToast("Signed out. Session ended.");
   };
+
+  // ─── USER IDLE TIMEOUT (30m) & TAB CLOSE LOGOUT ─────────────────────────────
+  // Auto-logs out if the user is inactive for 30 minutes.
+  // Closing the tab immediately terminates the session via sessionStorage.
+  const USER_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+  const USER_IDLE_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
+  const userIdleTimerRef = useRef(null);
+
+  const resetUserIdleTimer = useCallback(() => {
+    if (userIdleTimerRef.current) {
+      clearTimeout(userIdleTimerRef.current);
+    }
+    userIdleTimerRef.current = setTimeout(() => {
+      if (user) {
+        logoutUser();
+        showToast("Session timed out due to inactivity.", "error");
+      }
+    }, USER_IDLE_TIMEOUT_MS);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      if (userIdleTimerRef.current) {
+        clearTimeout(userIdleTimerRef.current);
+      }
+      return;
+    }
+
+    resetUserIdleTimer();
+    const handleActivity = () => resetUserIdleTimer();
+    USER_IDLE_EVENTS.forEach((evt) => {
+      window.addEventListener(evt, handleActivity, { passive: true });
+    });
+
+    return () => {
+      if (userIdleTimerRef.current) {
+        clearTimeout(userIdleTimerRef.current);
+      }
+      USER_IDLE_EVENTS.forEach((evt) => {
+        window.removeEventListener(evt, handleActivity);
+      });
+    };
+  }, [user, resetUserIdleTimer]);
 
   const updateUserProfile = (updatedFields) => {
     if (!user) return;
@@ -831,8 +890,10 @@ export const AppProvider = ({ children }) => {
           });
           setUser(result.user, result.token);
           if (typeof window !== "undefined" && result.token) {
-            localStorage.setItem("niyara_admin_jwt", result.token);
-            localStorage.setItem("niyara_jwt_token", result.token);
+            sessionStorage.setItem("niyara_admin_jwt", result.token);
+            sessionStorage.setItem("niyara_jwt_token", result.token);
+            localStorage.removeItem("niyara_admin_jwt");
+            localStorage.removeItem("niyara_jwt_token");
           }
           logSecurityEvent(
             "ADMIN_EMAIL_LOGIN_SUCCESS",

@@ -22,6 +22,8 @@ const API_BASE = getApiBase();
 const getAdminToken = () => {
   if (typeof window === "undefined") return null;
   return (
+    sessionStorage.getItem("niyara_admin_jwt") ||
+    sessionStorage.getItem("niyara_jwt_token") ||
     localStorage.getItem("niyara_admin_jwt") ||
     localStorage.getItem("niyara_jwt_token") ||
     null

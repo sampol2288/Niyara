@@ -86,6 +86,7 @@ export const AdminDashboard = () => {
     image: "",
     images: [],
     description: "",
+    materials: "",
     shippingInfo: ""
   });
 
@@ -196,6 +197,9 @@ export const AdminDashboard = () => {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     const prodId = editingProduct ? (editingProduct.id || editingProduct._id) : `PRD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const materialsArray = productForm.materials
+      ? productForm.materials.split(",").map(m => m.trim()).filter(Boolean)
+      : [];
     const newProdObj = {
       id: prodId,
       _id: prodId,
@@ -208,6 +212,7 @@ export const AdminDashboard = () => {
       image: productForm.image || (productForm.images && productForm.images[0]) || "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=600&auto=format&fit=crop",
       images: productForm.images || [],
       description: productForm.description || "",
+      materials: materialsArray,
       shippingInfo: productForm.shippingInfo || "",
       status: (parseInt(productForm.stock) || 0) > 0 ? "In Stock" : "Out of Stock"
     };
@@ -223,6 +228,7 @@ export const AdminDashboard = () => {
         image: newProdObj.image,
         images: newProdObj.images,
         description: newProdObj.description,
+        materials: materialsArray,
         shippingInfo: newProdObj.shippingInfo
       };
 
@@ -246,7 +252,7 @@ export const AdminDashboard = () => {
     } finally {
       setIsAddProductModalOpen(false);
       setEditingProduct(null);
-      setProductForm({ title: "", category: "Outerwear", price: "", stock: "", sku: "", image: "", images: [], description: "", shippingInfo: "" });
+      setProductForm({ title: "", category: "Outerwear", price: "", stock: "", sku: "", image: "", images: [], description: "", materials: "", shippingInfo: "" });
     }
   };
 
@@ -271,7 +277,9 @@ export const AdminDashboard = () => {
       stock: prod.stock || "",
       sku: prod.sku || "",
       image: prod.image || "",
+      images: prod.images || [],
       description: prod.description || "",
+      materials: Array.isArray(prod.materials) ? prod.materials.join(", ") : (prod.materials || ""),
       shippingInfo: prod.shippingInfo || ""
     });
     setIsAddProductModalOpen(true);
@@ -930,7 +938,7 @@ export const AdminDashboard = () => {
                   </select>
                 </div>
 
-                <button onClick={() => { setEditingProduct(null); setProductForm({ title: "", category: categories[0]?.name || "Outerwear", price: "", stock: "", sku: "", image: "", description: "", shippingInfo: "" }); setIsAddProductModalOpen(true); }} className="btn-gold">
+                <button onClick={() => { setEditingProduct(null); setProductForm({ title: "", category: categories[0]?.name || "Outerwear", price: "", stock: "", sku: "", image: "", images: [], description: "", materials: "", shippingInfo: "" }); setIsAddProductModalOpen(true); }} className="btn-gold">
                   <Plus size={16} /> ADD NEW SKU
                 </button>
               </div>
@@ -1439,8 +1447,8 @@ export const AdminDashboard = () => {
 
       {/* Product SKU Modal */}
       {isAddProductModalOpen && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
-          <div className="glass-panel" style={{ maxWidth: "540px", width: "100%", padding: "2rem" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: "2rem 1rem" }}>
+          <div className="glass-panel" style={{ maxWidth: "580px", width: "100%", padding: "2rem", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
               <h3 style={{ fontSize: "1.25rem", fontWeight: 700 }}>{editingProduct ? "Edit Product SKU" : "Add New Product SKU"}</h3>
               <button onClick={() => setIsAddProductModalOpen(false)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer" }}>
@@ -1476,6 +1484,26 @@ export const AdminDashboard = () => {
                   <input type="number" className="admin-input" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} required />
                 </div>
               </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>DESCRIPTION</label>
+                <textarea className="admin-input" rows={3} value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} placeholder="Premium quality garment crafted with attention to detail..." style={{ resize: "vertical", minHeight: "70px" }} />
+              </div>
+
+              {/* Materials & Care */}
+              <div>
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>MATERIALS & CARE</label>
+                <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "0.25rem 0 0.5rem" }}>Enter materials separated by commas (e.g. 100% Italian Wool, Silk Lining, Dry Clean Only)</p>
+                <textarea className="admin-input" rows={2} value={productForm.materials} onChange={(e) => setProductForm({ ...productForm, materials: e.target.value })} placeholder="100% Italian Wool, Silk Lining, Dry Clean Only" style={{ resize: "vertical", minHeight: "50px" }} />
+              </div>
+
+              {/* Shipping & Returns */}
+              <div>
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>SHIPPING & RETURNS</label>
+                <textarea className="admin-input" rows={2} value={productForm.shippingInfo} onChange={(e) => setProductForm({ ...productForm, shippingInfo: e.target.value })} placeholder="Free shipping on orders over $200. 30-day returns accepted..." style={{ resize: "vertical", minHeight: "50px" }} />
+              </div>
+
               <div>
                 <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>PRODUCT IMAGES</label>
                 <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", margin: "0.25rem 0 0.5rem" }}>First image is used as the main product image. You can upload multiple at once.</p>
@@ -1532,6 +1560,7 @@ export const AdminDashboard = () => {
                   </div>
                 )}
               </div>
+
               <button type="submit" className="btn-gold" style={{ marginTop: "1rem", justifyContent: "center" }}>
                 SAVE SKU TO MONGODB
               </button>
