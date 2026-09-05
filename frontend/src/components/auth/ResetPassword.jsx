@@ -12,14 +12,18 @@ export const ResetPassword = ({ setAuthMode, setIsLoading, isLoading }) => {
     if (!newPassword) return showToast("Please enter a new password.");
     
     setIsLoading(true);
-    const res = await completePasswordReset(newPassword);
-    setIsLoading(false);
-    
-    if (res.success) {
-      setAuthMode("login");
-      setNewPassword("");
-    } else {
-      showToast(res.error || "Failed to reset password");
+    try {
+      const res = await completePasswordReset(newPassword);
+      if (res.success) {
+        setAuthMode("login");
+        setNewPassword("");
+      } else {
+        showToast(res.error || "Failed to reset password");
+      }
+    } catch (err) {
+      showToast(err.message || "Failed to reset password. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

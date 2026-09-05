@@ -16,14 +16,18 @@ export const LoginForm = ({ setAuthMode, setIsLoading, isLoading, setIsAuthModal
     if (!formData.email || !formData.password) return showToast("Please fill in all fields.");
     
     setIsLoading(true);
-    const res = await loginUser(formData.email, formData.password);
-    setIsLoading(false);
-    
-    if (res.success) {
-      setIsAuthModalOpen(false);
-      setFormData({ email: "", password: "" });
-    } else {
-      showToast(res.error || "Login failed");
+    try {
+      const res = await loginUser(formData.email, formData.password);
+      if (res.success) {
+        setIsAuthModalOpen(false);
+        setFormData({ email: "", password: "" });
+      } else {
+        showToast(res.error || "Login failed");
+      }
+    } catch (err) {
+      showToast(err.message || "Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

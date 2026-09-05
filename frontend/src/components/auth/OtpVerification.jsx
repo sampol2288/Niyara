@@ -12,19 +12,23 @@ export const OtpVerification = ({ setAuthMode, setIsLoading, isLoading, setIsAut
     if (!otpCode) return showToast("Please enter the verification code.");
     
     setIsLoading(true);
-    const res = await verifyOtpCode(otpCode);
-    setIsLoading(false);
-    
-    if (res.success) {
-      if (res.nextStep === "new_password") {
-        setAuthMode("reset_new_password");
+    try {
+      const res = await verifyOtpCode(otpCode);
+      if (res.success) {
+        if (res.nextStep === "new_password") {
+          setAuthMode("reset_new_password");
+        } else {
+          setIsAuthModalOpen(false);
+          setOtpCode("");
+          setAuthMode("login");
+        }
       } else {
-        setIsAuthModalOpen(false);
-        setOtpCode("");
-        setAuthMode("login");
+        showToast(res.error || "Invalid verification code");
       }
-    } else {
-      showToast(res.error || "Invalid verification code");
+    } catch (err) {
+      showToast(err.message || "Failed to verify code. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

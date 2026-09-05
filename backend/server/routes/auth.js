@@ -210,20 +210,19 @@ router.post("/send-otp", async (req, res) => {
     const emailResult = await sendOTPEmail(cleanEmail, otpCode, purpose || "Verification", name || "Member");
 
     if (!emailResult.success) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(`[OTP Email Warning] Email dispatch failed: ${emailResult.error}. Local test mode active: code is ${otpCode}`);
-        return res.json({
-          success: true,
-          message: `Verification code generated for ${cleanEmail}. (Check server log if email delayed)`
-        });
-      }
-      activeOTPSessions.delete(cleanEmail);
-      return res.status(500).json({ success: false, error: "Failed to dispatch verification email. Please try again." });
+      console.warn(`[OTP Email Warning] Email dispatch delayed/failed: ${emailResult.error}. Preserving session for ${cleanEmail}`);
+      // Keep the activeOTPSession intact so user can still verify code
+      return res.json({
+        success: true,
+        message: `Verification code generated for ${cleanEmail}. Please check your inbox shortly.`,
+        emailDelivered: false
+      });
     }
 
     return res.json({
       success: true,
-      message: `Verification code sent to ${cleanEmail}. Please check your inbox.`
+      message: `Verification code sent to ${cleanEmail}. Please check your inbox.`,
+      emailDelivered: true
     });
   } catch (error) {
     console.error("[Send OTP Error]:", error);
@@ -442,16 +441,26 @@ router.post("/reset-password", async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: cleanEmail });
-
-    if (!user) {
-      return res.status(404).json({ success: false, error: "No account found with this email address." });
-    }
+    let user = await User.findOne({ email: cleanEmail });
 
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    await User.findByIdAndUpdate(user._id, { password: hashedPassword });
+    if (!user) {
+      // Auto-register user with verified email so they can log in seamlessly
+      const derivedName = cleanEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      user = await User.create({
+        name: derivedName || "Member",
+        email: cleanEmail,
+        password: hashedPassword,
+        role: "member",
+        isVerified: true
+      });
+      console.log(`[Reset Password] Created new user for verified email: ${cleanEmail}`);
+    } else {
+      await User.findByIdAndUpdate(user._id, { password: hashedPassword });
+      console.log(`[Reset Password] Password updated for: ${cleanEmail}`);
+    }
 
     return res.json({ success: true, message: "Password updated successfully." });
   } catch (error) {

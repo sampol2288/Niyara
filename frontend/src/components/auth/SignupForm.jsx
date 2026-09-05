@@ -17,15 +17,19 @@ export const SignupForm = ({ setAuthMode, setIsLoading, isLoading, setIsAuthModa
     if (formData.password.length < 6) return showToast("Password must be at least 6 characters.");
 
     setIsLoading(true);
-    const res = await signupDirect(formData.name, formData.email, formData.password);
-    setIsLoading(false);
-
-    if (res.success) {
-      // Close modal and return to shop — user is now logged in
-      if (setIsAuthModalOpen) setIsAuthModalOpen(false);
-      setAuthMode("login");
-    } else {
-      showToast(res.error || "Signup failed. Please try again.");
+    try {
+      const res = await signupDirect(formData.name, formData.email, formData.password);
+      if (res.success) {
+        // Close modal and return to shop — user is now logged in
+        if (setIsAuthModalOpen) setIsAuthModalOpen(false);
+        setAuthMode("login");
+      } else {
+        showToast(res.error || "Signup failed. Please try again.");
+      }
+    } catch (err) {
+      showToast(err.message || "Signup failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

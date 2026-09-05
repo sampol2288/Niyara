@@ -461,22 +461,26 @@ export const AppProvider = ({ children }) => {
   const startResetOtp = async (email) => {
     const cleanEmail = email.trim().toLowerCase();
 
-    // Send OTP via backend — the backend validates the email exists
-    const apiResult = await authApi.sendOtp(cleanEmail, "", "reset");
+    try {
+      // Send OTP via backend — the backend validates the email and dispatches code
+      const apiResult = await authApi.sendOtp(cleanEmail, "", "reset");
 
-    if (!apiResult.success) {
-      return { success: false, error: apiResult.error || "Failed to send reset email. Please check the address and try again." };
+      if (!apiResult.success) {
+        return { success: false, error: apiResult.error || "Failed to send reset email. Please check the address and try again." };
+      }
+
+      // Store only the email and purpose — no OTP code client-side
+      const otpSession = {
+        email: cleanEmail,
+        purpose: "reset",
+        payload: { email: cleanEmail }
+      };
+      setActiveOtpSession(otpSession);
+      showToast(`Password reset code sent to ${cleanEmail}. Check your inbox.`);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || "Unable to connect to server. Please try again." };
     }
-
-    // Store only the email and purpose — no OTP code client-side
-    const otpSession = {
-      email: cleanEmail,
-      purpose: "reset",
-      payload: { email: cleanEmail }
-    };
-    setActiveOtpSession(otpSession);
-    showToast(`Password reset code sent to ${cleanEmail}. Check your inbox.`);
-    return { success: true };
   };
 
   const verifyOtpCode = async (enteredCode) => {
@@ -484,38 +488,42 @@ export const AppProvider = ({ children }) => {
       return { success: false, error: "No active verification session found." };
     }
 
-    // Verify OTP strictly via backend — no client-side bypass
-    const apiCheck = await authApi.verifyOtp(activeOtpSession.email, enteredCode);
-    if (!apiCheck.success) {
-      return { success: false, error: apiCheck.error || "Invalid verification code." };
-    }
-
-    if (activeOtpSession.purpose === "signup") {
-      const newUserPayload = activeOtpSession.payload;
-      const apiResult = await authApi.register({
-        name: newUserPayload.name,
-        email: newUserPayload.email,
-        password: newUserPayload.password
-      });
-
-      if (!apiResult.success) {
-        return { success: false, error: apiResult.error || "Registration failed." };
+    try {
+      // Verify OTP strictly via backend — no client-side bypass
+      const apiCheck = await authApi.verifyOtp(activeOtpSession.email, enteredCode);
+      if (!apiCheck.success) {
+        return { success: false, error: apiCheck.error || "Invalid verification code." };
       }
 
-      const createdUser = apiResult.user;
-      const updatedList = [...registeredUsers, createdUser];
-      updateRegisteredUsers(updatedList);
-      setUser(createdUser, apiResult.token);
-      setActiveOtpSession(null);
-      showToast(`Welcome, ${createdUser.name}! Account created successfully.`);
-      return { success: true, user: createdUser, nextStep: "complete" };
-    }
+      if (activeOtpSession.purpose === "signup") {
+        const newUserPayload = activeOtpSession.payload;
+        const apiResult = await authApi.register({
+          name: newUserPayload.name,
+          email: newUserPayload.email,
+          password: newUserPayload.password
+        });
 
-    if (activeOtpSession.purpose === "reset") {
-      return { success: true, nextStep: "new_password" };
-    }
+        if (!apiResult.success) {
+          return { success: false, error: apiResult.error || "Registration failed." };
+        }
 
-    return { success: true };
+        const createdUser = apiResult.user;
+        const updatedList = [...registeredUsers, createdUser];
+        updateRegisteredUsers(updatedList);
+        setUser(createdUser, apiResult.token);
+        setActiveOtpSession(null);
+        showToast(`Welcome, ${createdUser.name}! Account created successfully.`);
+        return { success: true, user: createdUser, nextStep: "complete" };
+      }
+
+      if (activeOtpSession.purpose === "reset") {
+        return { success: true, nextStep: "new_password" };
+      }
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || "Error verifying code. Please try again." };
+    }
   };
 
   const completePasswordReset = async (newPassword) => {
@@ -525,15 +533,19 @@ export const AppProvider = ({ children }) => {
 
     const email = activeOtpSession.email;
 
-    // Call backend to persist the new password (hashed)
-    const apiResult = await authApi.resetPassword(email, newPassword);
-    if (!apiResult.success) {
-      return { success: false, error: apiResult.error || "Failed to update password." };
-    }
+    try {
+      // Call backend to persist the new password (hashed)
+      const apiResult = await authApi.resetPassword(email, newPassword);
+      if (!apiResult.success) {
+        return { success: false, error: apiResult.error || "Failed to update password." };
+      }
 
-    setActiveOtpSession(null);
-    showToast("Password updated successfully!");
-    return { success: true };
+      setActiveOtpSession(null);
+      showToast("Password updated successfully! Please log in.");
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message || "Error resetting password. Please try again." };
+    }
   };
 
   const refreshJWTToken = () => {

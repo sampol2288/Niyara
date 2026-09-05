@@ -12,13 +12,17 @@ export const ForgotPassword = ({ setAuthMode, setIsLoading, isLoading }) => {
     if (!email) return showToast("Please enter your email.");
     
     setIsLoading(true);
-    const res = await startResetOtp(email);
-    setIsLoading(false);
-    
-    if (res.success) {
-      setAuthMode("otp");
-    } else {
-      showToast(res.error || "Failed to send reset link");
+    try {
+      const res = await startResetOtp(email);
+      if (res.success) {
+        setAuthMode("otp");
+      } else {
+        showToast(res.error || "Failed to send reset link");
+      }
+    } catch (err) {
+      showToast(err.message || "Failed to send reset link. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

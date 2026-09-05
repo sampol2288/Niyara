@@ -20,20 +20,41 @@ const getApiBase = () => {
 const API_BASE = getApiBase();
 
 /**
- * Helper: Make a JSON API request with standard error handling
+ * Helper: Make a JSON API request with standard error handling and 15s timeout
  */
 const apiRequest = async (endpoint, options = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   try {
     const url = `${API_BASE}${endpoint}`;
     const config = {
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       ...options
     };
     const res = await fetch(url, config);
-    const data = await res.json();
+    clearTimeout(timeoutId);
+
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      return {
+        success: false,
+        error: `Server returned HTTP ${res.status}. Please try again in a moment.`
+      };
+    }
     return data;
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error(`[API Error] Request to ${endpoint} failed:`, error);
+    if (error.name === "AbortError") {
+      return {
+        success: false,
+        error: "Request timed out. Please check your internet connection and try again."
+      };
+    }
     return {
       success: false,
       error: `Unable to connect to server (${API_BASE}). Please ensure the backend server is running.`
